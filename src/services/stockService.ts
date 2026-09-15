@@ -12,7 +12,7 @@ export function parseSeriesColorNo(name: string): { series: string; colorNo: str
 }
 
 export interface ProductIndexMap {
-  productIndex: Record<string, Record<string, Record<string, Product>>>;
+  productIndex: Record<string, Record<string, Record<string, Record<string, Product>>>>;
   seriesIndex: Record<string, Record<string, string>>;
   nameToSeries: Record<string, string>;
   productNames: string[];
@@ -20,14 +20,16 @@ export interface ProductIndexMap {
 }
 
 export function buildProductIndexes(products: Product[]): ProductIndexMap {
-  const productIndex: Record<string, Record<string, Record<string, Product>>> = {};
+  const productIndex: Record<string, Record<string, Record<string, Record<string, Product>>>> = {};
   products.forEach((r) => {
     if (!r.name) return;
     if (!productIndex[r.name]) productIndex[r.name] = {};
     const sizeKey = r.size || 'มาตรฐาน';
     if (!productIndex[r.name][sizeKey]) productIndex[r.name][sizeKey] = {};
     const baseKey = r.base || 'มาตรฐาน';
-    productIndex[r.name][sizeKey][baseKey] = r;
+    if (!productIndex[r.name][sizeKey][baseKey]) productIndex[r.name][sizeKey][baseKey] = {};
+    const colorKey = (r.colorCode || '').trim() || '__NO_COLOR__';
+    productIndex[r.name][sizeKey][baseKey][colorKey] = r;
   });
 
   const seriesIndex: Record<string, Record<string, string>> = {};
@@ -65,12 +67,12 @@ export function buildProductIndexes(products: Product[]): ProductIndexMap {
 export function recomputeStock(products: Product[], sales: SaleEntry[]): Product[] {
   const soldMap: Record<string, number> = {};
   sales.forEach((s) => {
-    const key = s.sku || `${s.name}|${s.size}|${s.base}`;
+    const key = s.sku || `${s.name}|${s.size}|${s.base}|${s.colorCode || ''}`;
     soldMap[key] = (soldMap[key] || 0) + (Number(s.qty) || 0);
   });
 
   return products.map((p) => {
-    const key = p.sku || `${p.name}|${p.size}|${p.base}`;
+    const key = p.sku || `${p.name}|${p.size}|${p.base}|${p.colorCode || ''}`;
     const sold = soldMap[key] || 0;
     const init = Number(p.init) || 0;
     const inflow = Number(p.inflow) || 0;
@@ -95,7 +97,7 @@ export function getLowStockProducts(
 ): { product: Product; runRateDays: number }[] {
   const recentSold: Record<string, number> = {};
   salesSince14DaysAgo.forEach((s) => {
-    const key = s.sku || `${s.name}|${s.size}|${s.base}`;
+    const key = s.sku || `${s.name}|${s.size}|${s.base}|${s.colorCode || ''}`;
     recentSold[key] = (recentSold[key] || 0) + (Number(s.qty) || 0);
   });
 
