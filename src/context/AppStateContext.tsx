@@ -708,7 +708,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (p.sku && p.sku.trim()) {
           skuMap.set(p.sku.trim().toLowerCase(), p);
         }
-        const key = `${p.name.trim().toLowerCase()}|${(p.size || '').trim().toLowerCase()}|${(p.base || '').trim().toLowerCase()}`;
+        const key = `${p.name.trim().toLowerCase()}|${(p.size || '').trim().toLowerCase()}|${(p.base || '').trim().toLowerCase()}|${(p.filmColor || '').trim().toLowerCase()}|${(p.colorCode || '').trim().toLowerCase()}`;
         nameKeyMap.set(key, p);
       });
 
@@ -718,7 +718,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       incomingProds.forEach((incoming) => {
         const incomingSkuKey = incoming.sku ? incoming.sku.trim().toLowerCase() : '';
-        const incomingNameKey = `${incoming.name.trim().toLowerCase()}|${(incoming.size || '').trim().toLowerCase()}|${(incoming.base || '').trim().toLowerCase()}`;
+        const incomingNameKey = `${incoming.name.trim().toLowerCase()}|${(incoming.size || '').trim().toLowerCase()}|${(incoming.base || '').trim().toLowerCase()}|${(incoming.filmColor || '').trim().toLowerCase()}|${(incoming.colorCode || '').trim().toLowerCase()}`;
 
         let matched: Product | undefined;
         let matchIdx = -1;
@@ -732,7 +732,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             (p) =>
               p.name.trim().toLowerCase() === incoming.name.trim().toLowerCase() &&
               (p.size || '').trim().toLowerCase() === (incoming.size || '').trim().toLowerCase() &&
-              (p.base || '').trim().toLowerCase() === (incoming.base || '').trim().toLowerCase()
+              (p.base || '').trim().toLowerCase() === (incoming.base || '').trim().toLowerCase() &&
+              (p.filmColor || '').trim().toLowerCase() === (incoming.filmColor || '').trim().toLowerCase() &&
+              (p.colorCode || '').trim().toLowerCase() === (incoming.colorCode || '').trim().toLowerCase()
           );
         }
 
@@ -747,6 +749,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             size: incoming.size || target.size,
             base: incoming.base || target.base,
             filmColor: incoming.filmColor || target.filmColor,
+            colorCode: incoming.colorCode || target.colorCode,
           };
         } else {
           addCount++;
