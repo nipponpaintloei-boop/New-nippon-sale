@@ -71,8 +71,11 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
     if (!selectedProduct || !selectedSize || !selectedBase) return [];
     const colorMap = indexes.productIndex[selectedProduct]?.[selectedSize]?.[selectedBase];
     if (!colorMap) return [];
-    return Object.entries(colorMap)
-      .map(([key, product]) => ({ key, value: product.colorCode || '' }))
+    return Object.keys(colorMap)
+      .map((key) => {
+        const product = colorMap[key] as Product;
+        return { key, value: product.colorCode || '' };
+      })
       .filter((x) => x.value)
       .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
   }, [selectedProduct, selectedSize, selectedBase, indexes]);
