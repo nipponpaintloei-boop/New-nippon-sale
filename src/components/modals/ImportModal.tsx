@@ -191,6 +191,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         const priceRaw = findValue(row, ['ราคา', 'Price', 'price', 'ราคาขาย', 'ราคาสินค้า', 'ราคาสินค้า/หน่วย']);
         const stockRaw = findValue(row, ['สต็อก', 'Stock', 'stock', 'จำนวนคงเหลือ', 'คงเหลือ', 'จำนวน', 'Init', 'สต๊อก']);
         const filmColorRaw = findValue(row, ['ฟิล์มสี', 'ฟิล์มสี ', 'FilmColor', 'Film Color', 'film color']);
+        const colorCodeRaw = findValue(row, ['เบอร์สี', 'รหัสสี', 'Color', 'ColorCode', 'เฉดสี', 'รหัสเฉดสี']);
 
         const name = nameRaw ? String(nameRaw).trim() : '';
         if (!name) return; // Skip empty rows
@@ -201,6 +202,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         const price = Number(priceRaw) || 0;
         const stock = Number(stockRaw) || 0;
         const filmColor = filmColorRaw ? String(filmColorRaw).trim() : '';
+        const colorCode = colorCodeRaw ? String(colorCodeRaw).trim() : '';
 
         productsToMerge.push({
           sku,
@@ -215,6 +217,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           stock,
           currentStock: stock,
           filmColor,
+          colorCode,
         });
       });
 
