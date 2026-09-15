@@ -15,6 +15,7 @@ export interface Product {
   id?: string;
   category?: string;
   filmColor?: string;
+  colorCode?: string;
 }
 
 export interface SaleEntry {
