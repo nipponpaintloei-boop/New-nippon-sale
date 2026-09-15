@@ -28,7 +28,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   onClose,
   defaultTab = 'products',
 }) => {
-  const { sales, mergeProducts, replaceProducts, addSalesEntries, clearSalesEntries } = useAppState();
+  const { sales, mergeProducts, replaceProducts, addSalesEntries, recomputeAllStock, clearSalesEntries } = useAppState();
 
   const [activeTab, setActiveTab] = useState<'products' | 'sales'>(defaultTab);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
@@ -367,6 +367,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       }
 
       await addSalesEntries(salesToAdd);
+      await recomputeAllStock();
 
       setResultMsg({
         type: 'success',
