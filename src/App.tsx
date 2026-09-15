@@ -28,6 +28,7 @@ import { ResetModal } from './components/modals/ResetModal';
 import { SaleDetailModal } from './components/modals/SaleDetailModal';
 import { ProductModal } from './components/modals/ProductModal';
 import { GoogleSheetsModal } from './components/modals/GoogleSheetsModal';
+import { GoogleAuthModal } from './components/modals/GoogleAuthModal';
 import { InstallAppModal } from './components/modals/InstallAppModal';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { SyncToastContainer } from './components/common/SyncToastContainer';
@@ -48,6 +49,7 @@ function MainApp() {
   const [auditModalOpen, setAuditModalOpen] = useState<boolean>(false);
   const [resetModalOpen, setResetModalOpen] = useState<boolean>(false);
   const [sheetsModalOpen, setSheetsModalOpen] = useState<boolean>(false);
+  const [googleAuthModalOpen, setGoogleAuthModalOpen] = useState<boolean>(false);
   const [installModalOpen, setInstallModalOpen] = useState<boolean>(false);
 
   // Selected item modals
@@ -83,6 +85,7 @@ function MainApp() {
           onOpenAuditModal={() => setAuditModalOpen(true)}
           onOpenSheetsModal={() => setSheetsModalOpen(true)}
           onOpenInstallModal={() => setInstallModalOpen(true)}
+          onOpenGoogleAuth={() => setGoogleAuthModalOpen(true)}
         />
 
         {/* Center Main Stage */}
@@ -93,6 +96,7 @@ function MainApp() {
             onOpenActionCenter={() => setCurrentTab('dash')}
             onOpenSheetsModal={() => setSheetsModalOpen(true)}
             onOpenInstallModal={() => setInstallModalOpen(true)}
+            onOpenGoogleAuth={() => setGoogleAuthModalOpen(true)}
           />
 
           {/* View Content Stage */}
@@ -167,6 +171,7 @@ function MainApp() {
         onOpenAuditModal={() => setAuditModalOpen(true)}
         onOpenResetModal={() => setResetModalOpen(true)}
         onOpenInstallModal={() => setInstallModalOpen(true)}
+        onOpenGoogleAuth={() => setGoogleAuthModalOpen(true)}
       />
 
       {/* Modals */}
@@ -181,6 +186,11 @@ function MainApp() {
       <GallonRuleModal isOpen={gallonRuleModalOpen} onClose={() => setGallonRuleModalOpen(false)} />
       <ImportModal isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
       <GoogleSheetsModal isOpen={sheetsModalOpen} onClose={() => setSheetsModalOpen(false)} />
+      <GoogleAuthModal
+        isOpen={googleAuthModalOpen}
+        onClose={() => setGoogleAuthModalOpen(false)}
+        onOpenSheetsSetup={() => setSheetsModalOpen(true)}
+      />
       <InstallAppModal isOpen={installModalOpen} onClose={() => setInstallModalOpen(false)} />
       <AuditModal isOpen={auditModalOpen} onClose={() => setAuditModalOpen(false)} />
       <ResetModal isOpen={resetModalOpen} onClose={() => setResetModalOpen(false)} />

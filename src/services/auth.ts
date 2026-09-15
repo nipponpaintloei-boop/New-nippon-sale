@@ -69,9 +69,56 @@ export async function signOutUser(): Promise<void> {
   } catch (e) {
     console.error('Sign out error:', e);
   }
+  // Also clear Google Sheets access token
+  try {
+    localStorage.removeItem('nippon_user_google_profile');
+    sessionStorage.removeItem('nippon_google_access_token');
+    sessionStorage.removeItem('nippon_google_token_expiry');
+  } catch {
+    // Ignore
+  }
 }
 
-export function extractUsername(user: User | null): string {
+export interface GoogleUserProfile {
+  email: string;
+  name?: string;
+  picture?: string;
+  sub?: string;
+}
+
+const USER_PROFILE_STORAGE_KEY = 'nippon_user_google_profile';
+
+export function getSavedGoogleProfile(): GoogleUserProfile | null {
+  try {
+    const raw = localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function saveGoogleProfile(profile: GoogleUserProfile): void {
+  try {
+    localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  } catch {
+    // Ignore
+  }
+}
+
+export function clearGoogleProfile(): void {
+  try {
+    localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
+  } catch {
+    // Ignore
+  }
+}
+
+export function extractUsername(user: User | null, googleProfile?: GoogleUserProfile | null): string {
+  if (googleProfile?.name) return googleProfile.name;
+  if (googleProfile?.email) return googleProfile.email.split('@')[0];
   if (!user || !user.email) return 'ผู้ดูแลระบบ';
+  const metaName = (user.user_metadata as any)?.full_name || (user.user_metadata as any)?.name;
+  if (metaName) return metaName;
   return user.email.split('@')[0] || 'ผู้ดูแลระบบ';
 }

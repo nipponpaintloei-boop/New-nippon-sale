@@ -24,7 +24,7 @@ import {
   upsertSalesRows,
 } from '../services/storage';
 import { getSupabaseClient, USE_CLOUD_SYNC } from '../config/supabase';
-import { checkSession } from '../services/auth';
+import { checkSession, getSavedGoogleProfile, GoogleUserProfile, saveGoogleProfile, clearGoogleProfile } from '../services/auth';
 import { todayISO } from '../services/calculations';
 import { recomputeStock } from '../services/stockService';
 import { addAuditItem } from '../services/auditService';
@@ -41,6 +41,8 @@ interface AppStateContextType {
   setActiveMonth: (m: string) => void;
   currentUser: User | null;
   setCurrentUser: (u: User | null) => void;
+  googleProfile: GoogleUserProfile | null;
+  setGoogleProfile: (p: GoogleUserProfile | null) => void;
   isLoading: boolean;
   saveProducts: (newProds: Product[], actionDetail?: string) => Promise<boolean>;
   addSalesEntries: (entries: SaleEntry[]) => Promise<boolean>;
@@ -129,6 +131,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [customersMeta, setCustomersMeta] = useState<Record<string, CustomerMeta>>({});
   const [activeMonth, setActiveMonth] = useState<string>(todayISO().slice(0, 7));
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [googleProfile, setGoogleProfile] = useState<GoogleUserProfile | null>(getSavedGoogleProfile());
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Load initial data
@@ -138,6 +141,10 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // 1. Auth check
       const { user } = await checkSession();
       setCurrentUser(user);
+      const savedGProfile = getSavedGoogleProfile();
+      if (savedGProfile) {
+        setGoogleProfile(savedGProfile);
+      }
 
       // 2. Settings
       const setSnap = await storageGet(STORE_KEYS.settings);
@@ -930,6 +937,15 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setActiveMonth,
       currentUser,
       setCurrentUser,
+      googleProfile,
+      setGoogleProfile: (p: GoogleUserProfile | null) => {
+        setGoogleProfile(p);
+        if (p) {
+          saveGoogleProfile(p);
+        } else {
+          clearGoogleProfile();
+        }
+      },
       isLoading,
       saveProducts,
       addSalesEntries,
@@ -969,6 +985,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       customersMeta,
       activeMonth,
       currentUser,
+      googleProfile,
       isLoading,
       saveProducts,
       addSalesEntries,

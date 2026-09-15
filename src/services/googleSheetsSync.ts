@@ -219,9 +219,42 @@ export async function loadGsiScript(): Promise<boolean> {
 }
 
 /**
+ * Fetches Google User Profile using Access Token
+ */
+export async function fetchGoogleUserProfile(accessToken: string): Promise<{
+  email: string;
+  name?: string;
+  picture?: string;
+  sub?: string;
+} | null> {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+      email: data.email || '',
+      name: data.name || data.given_name || '',
+      picture: data.picture || '',
+      sub: data.sub || '',
+    };
+  } catch (e) {
+    console.error('Failed to fetch Google user profile:', e);
+    return null;
+  }
+}
+
+/**
  * Requests Google OAuth token with user interaction popup
  */
-export async function loginWithGoogleSheets(clientId: string): Promise<{ success: boolean; error?: string }> {
+export async function loginWithGoogleSheets(clientId: string): Promise<{
+  success: boolean;
+  error?: string;
+  user?: { email: string; name?: string; picture?: string };
+}> {
   if (!clientId || !clientId.trim()) {
     return { success: false, error: 'กรุณากรอก Google OAuth Client ID' };
   }
@@ -235,9 +268,9 @@ export async function loginWithGoogleSheets(clientId: string): Promise<{ success
     try {
       gisTokenClient = (window as any).google.accounts.oauth2.initTokenClient({
         client_id: clientId.trim(),
-        scope: 'https://www.googleapis.com/auth/spreadsheets',
+        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
         prompt: 'consent',
-        callback: (response: any) => {
+        callback: async (response: any) => {
           if (response.error) {
             console.error('GIS Error:', response);
             resolve({ success: false, error: response.error_description || response.error });
@@ -247,14 +280,44 @@ export async function loginWithGoogleSheets(clientId: string): Promise<{ success
             const expiresIn = Number(response.expires_in) || 3599;
             setAccessToken(response.access_token, expiresIn);
             saveGoogleSheetsConfig({ clientId: clientId.trim() });
-            resolve({ success: true });
+
+            // Fetch user info for seamless login & profile
+            const profile = await fetchGoogleUserProfile(response.access_token);
+            if (profile) {
+              try {
+                localStorage.setItem('nippon_user_google_profile', JSON.stringify(profile));
+              } catch {}
+            }
+
+            resolve({ success: true, user: profile || undefined });
           } else {
             resolve({ success: false, error: 'ไม่ได้รับ Access Token จาก Google' });
           }
         },
         error_callback: (err: any) => {
+          // err format: { type: 'popup_closed', message: 'Popup window closed' }
+          const errType = err?.type || '';
+          const errMsg = err?.message || '';
+
+          if (errType === 'popup_closed' || errMsg.includes('Popup window closed') || errMsg.includes('popup_closed')) {
+            console.warn('Google Login popup was closed by user or blocked by browser.');
+            resolve({
+              success: false,
+              error: 'หน้าต่างป๊อปอัป Google ถูกปิด หรือถูกเบราว์เซอร์บล็อก (หากอยู่ในหน้าพรีวิว กรุณากดเปิดแอพในแท็บใหม่ หรืออนุญาตหน้าต่างป๊อปอัปในเบราว์เซอร์)',
+            });
+            return;
+          }
+
+          if (errType === 'popup_failed_to_open') {
+            resolve({
+              success: false,
+              error: 'เบราว์เซอร์บล็อกหน้าต่างป๊อปอัป กรุณากดอนุญาตป๊อปอัป หรือเปิดแอพในแท็บใหม่',
+            });
+            return;
+          }
+
           console.error('GIS Non-OAuth error:', err);
-          resolve({ success: false, error: err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ Google' });
+          resolve({ success: false, error: errMsg || 'เกิดข้อผิดพลาดในการเชื่อมต่อ Google' });
         },
       });
 

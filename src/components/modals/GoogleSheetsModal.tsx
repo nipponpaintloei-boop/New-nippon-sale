@@ -33,7 +33,7 @@ interface GoogleSheetsModalProps {
 }
 
 export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, onClose }) => {
-  const { sales, products } = useAppState();
+  const { sales, products, googleProfile, setGoogleProfile } = useAppState();
 
   const [config, setConfig] = useState<GoogleSheetsConfig>(getGoogleSheetsConfig());
   const [clientIdInput, setClientIdInput] = useState<string>('');
@@ -86,10 +86,20 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
     setIsLoadingAuth(false);
 
     if (res.success) {
+      if (res.user) {
+        setGoogleProfile({
+          email: res.user.email,
+          name: res.user.name,
+          picture: res.user.picture,
+        });
+      }
       const updated = getGoogleSheetsConfig();
       setConfig(updated);
       setStatus(getConnectionStatus());
-      setStatusMessage({ text: 'เข้าสู่ระบบ Google สำเร็จแล้ว!', type: 'success' });
+      setStatusMessage({
+        text: `เข้าสู่ระบบสำเร็จ${res.user?.name ? ` (ยินดีต้อนรับ ${res.user.name})` : ''}`,
+        type: 'success',
+      });
     } else {
       setStatusMessage({ text: res.error || 'เข้าสู่ระบบไม่สำเร็จ', type: 'error' });
     }
