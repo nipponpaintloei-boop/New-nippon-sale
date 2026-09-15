@@ -40,6 +40,7 @@ interface SidebarProps {
   onOpenWeeklyReview: () => void;
   onOpenTargetModal: () => void;
   onOpenAuditModal: () => void;
+  onOpenImportModal?: () => void;
   onOpenSheetsModal?: () => void;
   onOpenInstallModal?: () => void;
   onOpenGoogleAuth?: () => void;
@@ -53,6 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenWeeklyReview,
   onOpenTargetModal,
   onOpenAuditModal,
+  onOpenImportModal,
   onOpenSheetsModal,
   onOpenInstallModal,
   onOpenGoogleAuth,
@@ -248,6 +250,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[10px] text-slate-500">ปรับ Target & Headcount</span>
           </div>
         </button>
+
+        {onOpenImportModal && (
+          <button
+            onClick={onOpenImportModal}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white transition-colors group cursor-pointer"
+          >
+            <div className="p-1.5 rounded-lg bg-slate-800 text-teal-400 group-hover:bg-teal-950/50">
+              <FileSpreadsheet className="w-4 h-4" />
+            </div>
+            <div className="text-left">
+              <span className="font-semibold block text-slate-200">นำเข้าข้อมูล Excel</span>
+              <span className="text-[10px] text-slate-500">สินค้า/สต็อก & ประวัติขาย</span>
+            </div>
+          </button>
+        )}
 
         <button
           onClick={onOpenAuditModal}

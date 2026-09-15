@@ -46,6 +46,7 @@ function MainApp() {
   const [commissionRuleModalOpen, setCommissionRuleModalOpen] = useState<boolean>(false);
   const [gallonRuleModalOpen, setGallonRuleModalOpen] = useState<boolean>(false);
   const [importModalOpen, setImportModalOpen] = useState<boolean>(false);
+  const [importModalTab, setImportModalTab] = useState<'products' | 'sales'>('products');
   const [auditModalOpen, setAuditModalOpen] = useState<boolean>(false);
   const [resetModalOpen, setResetModalOpen] = useState<boolean>(false);
   const [sheetsModalOpen, setSheetsModalOpen] = useState<boolean>(false);
@@ -56,6 +57,11 @@ function MainApp() {
   const [selectedSale, setSelectedSale] = useState<SaleEntry | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
+
+  const handleOpenImportModal = (tab: 'products' | 'sales' = 'products') => {
+    setImportModalTab(tab);
+    setImportModalOpen(true);
+  };
 
   const handleEditSale = (sale: SaleEntry) => {
     setSelectedSale(sale);
@@ -83,6 +89,7 @@ function MainApp() {
           onOpenWeeklyReview={() => setWeeklyReviewOpen(true)}
           onOpenTargetModal={() => setTargetModalOpen(true)}
           onOpenAuditModal={() => setAuditModalOpen(true)}
+          onOpenImportModal={() => handleOpenImportModal('products')}
           onOpenSheetsModal={() => setSheetsModalOpen(true)}
           onOpenInstallModal={() => setInstallModalOpen(true)}
           onOpenGoogleAuth={() => setGoogleAuthModalOpen(true)}
@@ -120,6 +127,7 @@ function MainApp() {
               <HistoryView
                 onEditSale={handleEditSale}
                 onDeleteSale={() => {}}
+                onOpenImportModal={() => handleOpenImportModal('sales')}
               />
             )}
 
@@ -137,6 +145,7 @@ function MainApp() {
               <StockView
                 onOpenAddProductModal={handleOpenAddProduct}
                 onEditProduct={handleEditProduct}
+                onOpenImportModal={() => handleOpenImportModal('products')}
               />
             )}
 
@@ -166,7 +175,7 @@ function MainApp() {
         onOpenTargetModal={() => setTargetModalOpen(true)}
         onOpenCommissionRuleModal={() => setCommissionRuleModalOpen(true)}
         onOpenGallonRuleModal={() => setGallonRuleModalOpen(true)}
-        onOpenImportModal={() => setImportModalOpen(true)}
+        onOpenImportModal={() => handleOpenImportModal('products')}
         onOpenSheetsModal={() => setSheetsModalOpen(true)}
         onOpenAuditModal={() => setAuditModalOpen(true)}
         onOpenResetModal={() => setResetModalOpen(true)}
@@ -184,7 +193,11 @@ function MainApp() {
         onClose={() => setCommissionRuleModalOpen(false)}
       />
       <GallonRuleModal isOpen={gallonRuleModalOpen} onClose={() => setGallonRuleModalOpen(false)} />
-      <ImportModal isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
+      <ImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        defaultTab={importModalTab}
+      />
       <GoogleSheetsModal isOpen={sheetsModalOpen} onClose={() => setSheetsModalOpen(false)} />
       <GoogleAuthModal
         isOpen={googleAuthModalOpen}

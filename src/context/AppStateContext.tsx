@@ -48,6 +48,8 @@ interface AppStateContextType {
   addSalesEntries: (entries: SaleEntry[]) => Promise<boolean>;
   updateSaleEntry: (entryOrId: string | SaleEntry, patch?: Partial<SaleEntry>) => Promise<boolean>;
   deleteSaleEntry: (id: string, reason?: string) => Promise<boolean>;
+  clearSalesEntries: (onlySeed?: boolean) => Promise<{ clearedCount: number }>;
+  clearAllSales: () => Promise<boolean>;
   saveSettings: (newSettings: AppSettings) => Promise<boolean>;
   updateSettings: (patch: Partial<AppSettings>) => Promise<boolean>;
   addProduct: (prod: Product) => Promise<boolean>;
@@ -504,6 +506,58 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [sales, products]
   );
 
+  const clearSalesEntries = useCallback(
+    async (onlySeed: boolean = false) => {
+      let remainingSales: SaleEntry[] = [];
+      let countToClear = 0;
+
+      if (onlySeed) {
+        // Clear only seed sales (where seed === true or id starts with 'seed-')
+        remainingSales = sales.filter((s) => !s.seed && !String(s.id).startsWith('seed-'));
+        countToClear = sales.length - remainingSales.length;
+      } else {
+        // Clear all sales
+        countToClear = sales.length;
+        remainingSales = [];
+      }
+
+      setSales(remainingSales);
+      const nextProds = recomputeStock(products, remainingSales);
+      setProducts(nextProds);
+
+      if (remainingSales.length === 0) {
+        await clearSalesTable();
+      } else {
+        await clearSalesTable();
+        if (remainingSales.length > 0) {
+          await upsertSalesRows(remainingSales);
+        }
+      }
+
+      await storageSet(STORE_KEYS.sales, JSON.stringify(remainingSales));
+      await storageSet(STORE_KEYS.products, JSON.stringify(nextProds));
+
+      setSettings((prev) => {
+        const actionLabel = onlySeed ? 'ล้างยอดขายตัวอย่าง' : 'ล้างยอดขายทั้งหมด';
+        const detail = onlySeed
+          ? `ล้างยอดขายตัวอย่างเริ่มต้น ${countToClear} รายการ เพื่อเตรียมนำเข้าไฟล์จริง`
+          : `ล้างประวัติการขายทั้งหมด ${countToClear} รายการ`;
+        const updated = addAuditItem(prev, actionLabel, detail);
+        storageSet(STORE_KEYS.settings, JSON.stringify(updated));
+        return updated;
+      });
+
+      triggerAutoSync(remainingSales, nextProds);
+      return { clearedCount: countToClear };
+    },
+    [sales, products]
+  );
+
+  const clearAllSales = useCallback(async () => {
+    await clearSalesEntries(false);
+    return true;
+  }, [clearSalesEntries]);
+
   const saveSettings = useCallback(async (newSettings: AppSettings) => {
     setSettings(newSettings);
     return await storageSet(STORE_KEYS.settings, JSON.stringify(newSettings));
@@ -951,6 +1005,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       addSalesEntries,
       updateSaleEntry,
       deleteSaleEntry,
+      clearSalesEntries,
+      clearAllSales,
       saveSettings,
       updateSettings,
       addProduct,
@@ -991,6 +1047,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       addSalesEntries,
       updateSaleEntry,
       deleteSaleEntry,
+      clearSalesEntries,
+      clearAllSales,
       saveSettings,
       updateSettings,
       addProduct,

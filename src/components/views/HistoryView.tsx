@@ -6,6 +6,7 @@ import {
   Trash2,
   Edit2,
   FileSpreadsheet,
+  Upload,
   User,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
@@ -16,13 +17,43 @@ import { exportSalesToExcel } from '../../services/exportService';
 interface HistoryViewProps {
   onEditSale: (sale: SaleEntry) => void;
   onDeleteSale: (id: string) => void;
+  onOpenImportModal?: () => void;
 }
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ onEditSale, onDeleteSale }) => {
-  const { sales, activeMonth } = useAppState();
+export const HistoryView: React.FC<HistoryViewProps> = ({
+  onEditSale,
+  onDeleteSale,
+  onOpenImportModal,
+}) => {
+  const { sales, activeMonth, clearSalesEntries } = useAppState();
   const [panel, setPanel] = useState<'day' | 'month'>('month');
   const [selectedDay, setSelectedDay] = useState<string>(todayISO());
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isClearingSeed, setIsClearingSeed] = useState<boolean>(false);
+
+  const seedSalesCount = useMemo(
+    () => sales.filter((s) => s.seed || String(s.id).startsWith('seed-')).length,
+    [sales]
+  );
+
+  const handleClearSeedSales = async () => {
+    if (
+      !window.confirm(
+        `คุณต้องการล้างรายการยอดขายตัวอย่างทั้งหมด (${seedSalesCount} รายการ) เพื่อเตรียมพื้นที่สำหรับข้อมูลจริง ใช่หรือไม่?`
+      )
+    ) {
+      return;
+    }
+    setIsClearingSeed(true);
+    try {
+      const res = await clearSalesEntries(true);
+      alert(`ล้างรายการตัวอย่างเรียบร้อยแล้ว ${res.clearedCount} รายการ`);
+    } catch (err: any) {
+      alert('เกิดข้อผิดพลาด: ' + err.message);
+    } finally {
+      setIsClearingSeed(false);
+    }
+  };
 
   // Filter sales
   const filteredSales = useMemo(() => {
@@ -164,17 +195,41 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onEditSale, onDeleteSa
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
+          <div className="space-y-1.5 w-full">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              ส่งออกข้อมูล
+              จัดการไฟล์ Excel
             </span>
-            <button
-              onClick={handleExport}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>ดาวน์โหลด Excel</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleExport}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                title="ดาวน์โหลดรายการขายเป็นไฟล์ Excel"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>ส่งออก Excel</span>
+              </button>
+              {onOpenImportModal && (
+                <button
+                  onClick={onOpenImportModal}
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                  title="นำเข้ายอดขายย้อนหลังหรือสต็อกสินค้าจากไฟล์ Excel"
+                >
+                  <Upload className="w-3.5 h-3.5 text-blue-600" />
+                  <span>นำเข้า Excel</span>
+                </button>
+              )}
+              {seedSalesCount > 0 && (
+                <button
+                  onClick={handleClearSeedSales}
+                  disabled={isClearingSeed}
+                  className="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-rose-200/80 dark:border-rose-800 disabled:opacity-50"
+                  title="ลบรายการยอดขายตัวอย่างเริ่มต้น 81 รายการ เพื่อเตรียมรับไฟล์ข้อมูลจริง"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>ล้างตัวอย่าง ({seedSalesCount})</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

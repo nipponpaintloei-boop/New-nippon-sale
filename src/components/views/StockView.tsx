@@ -11,6 +11,7 @@ import {
   ArrowDownRight,
   TrendingDown,
   PackagePlus,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { Product } from '../../types';
@@ -21,11 +22,13 @@ import { BulkStockInModal } from '../modals/BulkStockInModal';
 interface StockViewProps {
   onOpenAddProductModal: () => void;
   onEditProduct: (product: Product) => void;
+  onOpenImportModal?: () => void;
 }
 
 export const StockView: React.FC<StockViewProps> = ({
   onOpenAddProductModal,
   onEditProduct,
+  onOpenImportModal,
 }) => {
   const { products, sales, updateProduct, deleteProduct, recomputeAllStock } = useAppState();
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -98,6 +101,16 @@ export const StockView: React.FC<StockViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {onOpenImportModal && (
+            <button
+              onClick={onOpenImportModal}
+              className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800/80 transition-colors cursor-pointer shadow-2xs"
+              title="นำเข้าสินค้าและสต็อกเดิมจากไฟล์ Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>นำเข้า Excel</span>
+            </button>
+          )}
           <button
             onClick={() => setIsBulkStockInOpen(true)}
             className="px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5 border border-blue-200 dark:border-blue-800/80 transition-colors cursor-pointer"
