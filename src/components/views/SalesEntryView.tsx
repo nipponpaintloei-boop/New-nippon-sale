@@ -66,11 +66,25 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
     return Object.keys(indexes.productIndex[selectedProduct][selectedSize]);
   }, [selectedProduct, selectedSize, indexes]);
 
+  // Color numbers / color labels available for the selected product variant
+  const availableColorCodes = useMemo(() => {
+    if (!selectedProduct || !selectedSize || !selectedBase) return [];
+    const colorMap = indexes.productIndex[selectedProduct]?.[selectedSize]?.[selectedBase];
+    if (!colorMap) return [];
+    return Object.entries(colorMap)
+      .map(([key, product]) => ({ key, value: product.colorCode || '' }))
+      .filter((x) => x.value)
+      .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
+  }, [selectedProduct, selectedSize, selectedBase, indexes]);
+
   // Current matched product row
   const matchedRow: Product | null = useMemo(() => {
     if (!selectedProduct || !selectedSize || !selectedBase) return null;
-    return indexes.productIndex[selectedProduct]?.[selectedSize]?.[selectedBase] || null;
-  }, [selectedProduct, selectedSize, selectedBase, indexes]);
+    const colorMap = indexes.productIndex[selectedProduct]?.[selectedSize]?.[selectedBase];
+    if (!colorMap) return null;
+    const colorKey = colorCode.trim() || '__NO_COLOR__';
+    return colorMap[colorKey] || (availableColorCodes.length === 1 ? colorMap[availableColorCodes[0].key] : null) || null;
+  }, [selectedProduct, selectedSize, selectedBase, colorCode, availableColorCodes, indexes]);
 
   const unitPrice = matchedRow ? matchedRow.price : 0;
 
@@ -88,10 +102,16 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
       const defaultSize = sizes[0];
       setSelectedSize(defaultSize);
       const bases = Object.keys(indexes.productIndex[name][defaultSize] || {});
-      setSelectedBase(bases.length > 0 ? bases[0] : 'มาตรฐาน');
+      const defaultBase = bases.length > 0 ? bases[0] : 'มาตรฐาน';
+      setSelectedBase(defaultBase);
+      const colorMap = indexes.productIndex[name][defaultSize]?.[defaultBase] || {};
+      const colorKeys = Object.keys(colorMap);
+      const firstColor = colorKeys.find((k) => k !== '__NO_COLOR__');
+      setColorCode(firstColor ? (colorMap[firstColor]?.colorCode || '') : '');
     } else {
       setSelectedSize('มาตรฐาน');
       setSelectedBase('มาตรฐาน');
+      setColorCode('');
     }
   };
 
@@ -99,10 +119,25 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
     setSelectedSize(size);
     if (selectedProduct && indexes.productIndex[selectedProduct]?.[size]) {
       const bases = Object.keys(indexes.productIndex[selectedProduct][size]);
-      if (!bases.includes(selectedBase)) {
-        setSelectedBase(bases[0] || 'มาตรฐาน');
-      }
+      const nextBase = bases.includes(selectedBase) ? selectedBase : (bases[0] || 'มาตรฐาน');
+      setSelectedBase(nextBase);
+      const colorMap = indexes.productIndex[selectedProduct][size][nextBase] || {};
+      const firstColor = Object.keys(colorMap).find((k) => k !== '__NO_COLOR__');
+      setColorCode(firstColor ? (colorMap[firstColor]?.colorCode || '') : '');
     }
+  };
+
+  const handleSelectBase = (base: string) => {
+    setSelectedBase(base);
+    if (selectedProduct && selectedSize) {
+      const colorMap = indexes.productIndex[selectedProduct]?.[selectedSize]?.[base] || {};
+      const firstColor = Object.keys(colorMap).find((k) => k !== '__NO_COLOR__');
+      setColorCode(firstColor ? (colorMap[firstColor]?.colorCode || '') : '');
+    }
+  };
+
+  const handleSelectColorCode = (code: string) => {
+    setColorCode(code);
   };
 
   const ensureBillId = (): string => {
@@ -385,7 +420,7 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
                         <button
                           key={`quick-base-${b}-${idx}`}
                           type="button"
-                          onClick={() => setSelectedBase(b)}
+                          onClick={() => handleSelectBase(b)}
                           className={`min-w-[54px] px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border shadow-xs ${
                             isSelected
                               ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-slate-900/20 ring-2 ring-slate-400/30'
@@ -405,18 +440,45 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
                 )}
               </div>
 
-              {/* Color Code Input (4 cols) */}
-              <div className="sm:col-span-4 space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  รหัสเฉดสี (Color No.)
-                </label>
-                <input
-                  type="text"
-                  value={colorCode}
-                  onChange={(e) => setColorCode(e.target.value)}
-                  placeholder="เช่น A5006, 0310"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-shadow"
-                />
+              {/* Color Code / Film Color */}
+              <div className="sm:col-span-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    รหัสเฉดสี (Color No.)
+                  </label>
+                  {matchedRow?.filmColor && (
+                    <span className="text-[10px] font-bold text-slate-400">{matchedRow.filmColor}</span>
+                  )}
+                </div>
+                {availableColorCodes.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                    {availableColorCodes.map(({ key, value }) => (
+                      <button
+                        key={`color-${key}`}
+                        type="button"
+                        onClick={() => handleSelectColorCode(value)}
+                        className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition-colors ${
+                          colorCode === value
+                            ? 'bg-red-600 text-white border-red-600'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-red-300'
+                        }`}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={colorCode}
+                    onChange={(e) => setColorCode(e.target.value)}
+                    placeholder="เช่น A5006, 0310"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-shadow"
+                  />
+                )}
+                {matchedRow?.filmColor && (
+                  <div className="text-[10px] text-slate-500">ฟิล์มสี: <span className="font-bold">{matchedRow.filmColor}</span></div>
+                )}
               </div>
             </div>
           </div>
