@@ -18,6 +18,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onC
   const [base, setBase] = useState<string>('A');
   const [price, setPrice] = useState<number>(0);
   const [stock, setStock] = useState<number>(0);
+  const [filmColor, setFilmColor] = useState<string>('');
 
   useEffect(() => {
     if (product) {
@@ -27,6 +28,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onC
       setBase(product.base || '');
       setPrice(product.price || 0);
       setStock(product.stock || 0);
+      setFilmColor(product.filmColor || '');
     } else {
       setSku('NP-' + Math.floor(1000 + Math.random() * 9000));
       setName('');
@@ -34,6 +36,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onC
       setBase('A');
       setPrice(0);
       setStock(10);
+      setFilmColor('');
     }
   }, [product, isOpen]);
 
@@ -55,6 +58,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onC
         base: base.trim(),
         price: Number(price) || 0,
         stock: Number(stock) || 0,
+        filmColor: filmColor.trim(),
       });
     } else {
       await addProduct({
@@ -70,6 +74,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onC
         sold: 0,
         remain: Number(stock) || 0,
         category: 'สีทาอาคาร',
+        filmColor: filmColor.trim(),
       });
     }
     onClose();
@@ -152,6 +157,17 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onC
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ฟิล์มสี</label>
+            <input
+              type="text"
+              value={filmColor}
+              onChange={(e) => setFilmColor(e.target.value)}
+              placeholder="ระบุฟิล์มสี (ถ้ามี)"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
