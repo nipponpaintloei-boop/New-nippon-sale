@@ -28,9 +28,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   onClose,
   defaultTab = 'products',
 }) => {
-  const { sales, mergeProducts, addSalesEntries, recomputeAllStock, clearSalesEntries } = useAppState();
+  const { sales, mergeProducts, replaceProducts, addSalesEntries, recomputeAllStock, clearSalesEntries } = useAppState();
 
   const [activeTab, setActiveTab] = useState<'products' | 'sales'>(defaultTab);
+  const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
 
   // File states
   const [file, setFile] = useState<File | null>(null);
@@ -189,6 +190,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         const baseRaw = findValue(row, ['เบส', 'Base', 'base', 'เบสสี']);
         const priceRaw = findValue(row, ['ราคา', 'Price', 'price', 'ราคาขาย', 'ราคาสินค้า', 'ราคาสินค้า/หน่วย']);
         const stockRaw = findValue(row, ['สต็อก', 'Stock', 'stock', 'จำนวนคงเหลือ', 'คงเหลือ', 'จำนวน', 'Init', 'สต๊อก']);
+        const filmColorRaw = findValue(row, ['ฟิล์มสี', 'ฟิล์มสี ', 'FilmColor', 'Film Color', 'film color']);
 
         const name = nameRaw ? String(nameRaw).trim() : '';
         if (!name) return; // Skip empty rows
@@ -198,6 +200,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         const base = baseRaw ? String(baseRaw).trim() : 'มาตรฐาน';
         const price = Number(priceRaw) || 0;
         const stock = Number(stockRaw) || 0;
+        const filmColor = filmColorRaw ? String(filmColorRaw).trim() : '';
 
         productsToMerge.push({
           sku,
@@ -211,6 +214,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           remain: stock,
           stock,
           currentStock: stock,
+          filmColor,
         });
       });
 
@@ -223,14 +227,33 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         return;
       }
 
-      const res = await mergeProducts(productsToMerge, `นำเข้าไฟล์สินค้า Excel: ${file.name}`);
-      await recomputeAllStock();
+      if (importMode === 'replace') {
+        if (
+          !window.confirm(
+            `คุณต้องการลบสินค้าเดิมทั้งหมด (${previewData.length > 0 ? 'ที่มีอยู่ในระบบ' : ''}) แล้วแทนที่ด้วยไฟล์นี้ (${productsToMerge.length} รายการ) ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`
+          )
+        ) {
+          setImporting(false);
+          return;
+        }
+        await replaceProducts(productsToMerge, `นำเข้าไฟล์สินค้า Excel (แทนที่ทั้งหมด): ${file.name}`);
+        await recomputeAllStock();
 
-      setResultMsg({
-        type: 'success',
-        text: `นำเข้าสินค้าสำเร็จทั้งหมด ${productsToMerge.length} รายการ!`,
-        details: `เพิ่มสินค้าใหม่ ${res.addCount} รายการ, อัปเดตราคา/สต็อกเดิม ${res.updateCount} รายการ`,
-      });
+        setResultMsg({
+          type: 'success',
+          text: `แทนที่สินค้าทั้งหมดสำเร็จ ${productsToMerge.length} รายการ!`,
+          details: 'สินค้าเดิมทั้งหมดถูกลบและแทนที่ด้วยข้อมูลจากไฟล์นี้',
+        });
+      } else {
+        const res = await mergeProducts(productsToMerge, `นำเข้าไฟล์สินค้า Excel: ${file.name}`);
+        await recomputeAllStock();
+
+        setResultMsg({
+          type: 'success',
+          text: `นำเข้าสินค้าสำเร็จทั้งหมด ${productsToMerge.length} รายการ!`,
+          details: `เพิ่มสินค้าใหม่ ${res.addCount} รายการ, อัปเดตราคา/สต็อกเดิม ${res.updateCount} รายการ`,
+        });
+      }
       setFile(null);
       setPreviewData([]);
     } catch (err: any) {
@@ -417,6 +440,56 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           </button>
         </div>
 
+        {/* Import Mode Toggle for Product/Stock Tab */}
+        {activeTab === 'products' && (
+          <div className="space-y-2">
+            <span className="block text-[11px] font-bold text-slate-500 uppercase">
+              รูปแบบการนำเข้า
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setImportMode('merge')}
+                className={`text-left p-3 rounded-2xl border text-xs transition-all cursor-pointer ${
+                  importMode === 'merge'
+                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 ring-1 ring-emerald-400'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-emerald-300'
+                }`}
+              >
+                <div className="font-bold text-slate-800 dark:text-slate-100">
+                  เพิ่ม/อัปเดตเฉพาะรายการ
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  สินค้าใหม่จะถูกเพิ่ม ส่วนสินค้าเดิม (ตรง SKU/ชื่อ) จะอัปเดตราคา-สต็อก สินค้าอื่นที่ไม่อยู่ในไฟล์จะยังอยู่เหมือนเดิม
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportMode('replace')}
+                className={`text-left p-3 rounded-2xl border text-xs transition-all cursor-pointer ${
+                  importMode === 'replace'
+                    ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/50 ring-1 ring-rose-400'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-rose-300'
+                }`}
+              >
+                <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                  <span>แทนที่ทั้งหมด</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  ลบสินค้าเดิมทั้งหมดออกจากระบบ แล้วใช้ข้อมูลจากไฟล์นี้แทนทั้งหมด
+                </p>
+              </button>
+            </div>
+            {importMode === 'replace' && (
+              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-[11px] text-rose-700 dark:text-rose-300">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>คำเตือน: โหมดนี้จะลบสินค้าเดิมทั้งหมดในระบบ ไม่สามารถย้อนกลับได้ กรุณาตรวจสอบไฟล์ให้ครบถ้วนก่อนยืนยัน</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Action Banner for Clearing Seed Sales if on Sales Tab */}
         {activeTab === 'sales' && (seedSalesCount > 0 || totalSalesCount > 0) && (
           <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs space-y-2">
@@ -484,6 +557,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">เบอร์สี</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ราคา</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700 font-bold">สต็อก</span>
+                <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ฟิล์มสี</span>
               </>
             ) : (
               <>
@@ -619,7 +693,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({
               {importing
                 ? 'กำลังนำเข้าและประมวลผล...'
                 : activeTab === 'products'
-                ? 'ยืนยันนำเข้าสินค้า & สต็อก'
+                ? importMode === 'replace'
+                  ? 'ยืนยันแทนที่สินค้า & สต็อกทั้งหมด'
+                  : 'ยืนยันนำเข้าสินค้า & สต็อก'
                 : 'ยืนยันนำเข้ายอดขายย้อนหลัง'}
             </span>
           </button>
