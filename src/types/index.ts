@@ -14,6 +14,7 @@ export interface Product {
   minStock?: number;
   id?: string;
   category?: string;
+  filmColor?: string;
 }
 
 export interface SaleEntry {
