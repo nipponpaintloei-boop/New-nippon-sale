@@ -28,7 +28,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   onClose,
   defaultTab = 'products',
 }) => {
-  const { sales, mergeProducts, replaceProducts, addSalesEntries, recomputeAllStock, clearSalesEntries } = useAppState();
+  const { sales, mergeProducts, replaceProducts, addSalesEntries, clearSalesEntries } = useAppState();
 
   const [activeTab, setActiveTab] = useState<'products' | 'sales'>(defaultTab);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
@@ -237,7 +237,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           return;
         }
         await replaceProducts(productsToMerge, `นำเข้าไฟล์สินค้า Excel (แทนที่ทั้งหมด): ${file.name}`);
-        await recomputeAllStock();
 
         setResultMsg({
           type: 'success',
@@ -246,7 +245,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         });
       } else {
         const res = await mergeProducts(productsToMerge, `นำเข้าไฟล์สินค้า Excel: ${file.name}`);
-        await recomputeAllStock();
 
         setResultMsg({
           type: 'success',
@@ -369,7 +367,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       }
 
       await addSalesEntries(salesToAdd);
-      await recomputeAllStock();
 
       setResultMsg({
         type: 'success',
@@ -552,12 +549,12 @@ export const ImportModal: React.FC<ImportModalProps> = ({
               <>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">Sku</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700 font-bold">ชื่อสินค้า *</span>
-                <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ฟิล์มสี</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ขนาด</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">เบส</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">เบอร์สี</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ราคา</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700 font-bold">สต็อก</span>
+                <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ฟิล์มสี</span>
               </>
             ) : (
               <>
