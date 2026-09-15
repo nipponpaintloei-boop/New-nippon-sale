@@ -64,7 +64,8 @@ export const StockView: React.FC<StockViewProps> = ({
           p.name.toLowerCase().includes(q) ||
           p.sku.toLowerCase().includes(q) ||
           p.size.toLowerCase().includes(q) ||
-          p.base.toLowerCase().includes(q)
+          p.base.toLowerCase().includes(q) ||
+          (p.filmColor || '').toLowerCase().includes(q)
       );
     }
     return list;
@@ -264,6 +265,7 @@ export const StockView: React.FC<StockViewProps> = ({
                 <th className="py-3.5 px-4">ชื่อสินค้า</th>
                 <th className="py-3.5 px-4 text-center">ขนาด</th>
                 <th className="py-3.5 px-4 text-center">เบส</th>
+                <th className="py-3.5 px-4 text-center">ฟิล์มสี</th>
                 <th className="py-3.5 px-4 text-right">ราคา/ถัง</th>
                 <th className="py-3.5 px-4 text-center">คงเหลือ (สต็อก)</th>
                 <th className="py-3.5 px-4 text-right">จัดการ</th>
@@ -290,6 +292,9 @@ export const StockView: React.FC<StockViewProps> = ({
                       </td>
                       <td className="py-3.5 px-4 text-center text-slate-600 dark:text-slate-300">
                         {p.base || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 text-center text-slate-600 dark:text-slate-300">
+                        {p.filmColor || '-'}
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">
                         {fmt(p.price)} บ.
@@ -344,7 +349,7 @@ export const StockView: React.FC<StockViewProps> = ({
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-slate-400">
+                  <td colSpan={8} className="text-center py-16 text-slate-400">
                     ไม่พบข้อมูลสินค้าที่ตรงกับคำค้นหา
                   </td>
                 </tr>
