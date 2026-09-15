@@ -4,11 +4,14 @@ import { useAppState } from '../../context/AppStateContext';
 import { THAI_MONTHS } from '../../data/constants';
 import { extractUsername, signOutUser } from '../../services/auth';
 import { getConnectionStatus, getGoogleSheetsConfig } from '../../services/googleSheetsSync';
+import { Logo } from '../common/Logo';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 interface HeaderProps {
   onOpenDrawer: () => void;
   onOpenActionCenter?: () => void;
   onOpenSheetsModal?: () => void;
+  onOpenInstallModal?: () => void;
   actionCount?: number;
 }
 
@@ -16,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenDrawer,
   onOpenActionCenter,
   onOpenSheetsModal,
+  onOpenInstallModal,
   actionCount = 0,
 }) => {
   const { activeMonth, setActiveMonth, currentUser, setCurrentUser } = useAppState();
@@ -52,18 +56,11 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white font-black text-lg shadow-sm lg:hidden">
-              N
-            </div>
-            <div>
-              <span className="font-black text-lg tracking-tight bg-gradient-to-r from-red-600 via-red-500 to-amber-500 bg-clip-text text-transparent">
-                NIPPON SALE
-              </span>
-              <span className="hidden sm:inline-block ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200/60 dark:border-red-900/40">
-                PRO PORTAL
-              </span>
-            </div>
+          <div className="lg:hidden">
+            <Logo size="sm" variant="compact" />
+          </div>
+          <div className="hidden lg:block text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">สาขาเลย (Loei Branch)</span> · ระบบบริการและบันทึกยอดขาย
           </div>
         </div>
 
@@ -93,6 +90,10 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right: Actions & Profile */}
         <div className="flex items-center gap-2">
+          {onOpenInstallModal && (
+            <PWAInstallButton onOpenModal={onOpenInstallModal} variant="header" />
+          )}
+
           {onOpenSheetsModal && (
             <button
               type="button"

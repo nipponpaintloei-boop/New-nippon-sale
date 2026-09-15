@@ -22,6 +22,8 @@ import {
 import { MainTabType } from './Sidebar';
 import { useAppState } from '../../context/AppStateContext';
 import { signOutUser } from '../../services/auth';
+import { Logo } from '../common/Logo';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 interface SideDrawerProps {
   isOpen: boolean;
@@ -38,6 +40,7 @@ interface SideDrawerProps {
   onOpenSheetsModal?: () => void;
   onOpenAuditModal: () => void;
   onOpenResetModal: () => void;
+  onOpenInstallModal?: () => void;
 }
 
 export const SideDrawer: React.FC<SideDrawerProps> = ({
@@ -55,6 +58,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
   onOpenSheetsModal,
   onOpenAuditModal,
   onOpenResetModal,
+  onOpenInstallModal,
 }) => {
   const { currentUser, setCurrentUser } = useAppState();
 
@@ -76,15 +80,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
       <div className="w-80 max-w-[85vw] bg-slate-900 text-slate-100 h-full p-6 flex flex-col overflow-y-auto shadow-2xl border-r border-slate-800">
         {/* Drawer Header */}
         <div className="flex items-center justify-between pb-5 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-700 flex items-center justify-center text-white font-black text-xl shadow-md">
-              N
-            </div>
-            <div>
-              <h2 className="font-black text-white text-base tracking-tight">NIPPON SALE</h2>
-              <p className="text-xs text-slate-400">ระบบบริหารงานขายสีนิปปอน</p>
-            </div>
-          </div>
+          <Logo size="md" variant="full" />
           <button
             onClick={onClose}
             className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
@@ -210,6 +206,18 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
             <span>นำเข้าไฟล์ Excel (.xlsx)</span>
           </button>
+
+          {onOpenInstallModal && (
+            <div className="py-1">
+              <PWAInstallButton
+                onOpenModal={() => {
+                  onClose();
+                  onOpenInstallModal();
+                }}
+                variant="drawer"
+              />
+            </div>
+          )}
 
           {onOpenSheetsModal && (
             <button

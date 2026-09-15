@@ -17,6 +17,8 @@ import {
   Sparkles,
   FileSpreadsheet,
 } from 'lucide-react';
+import { Logo } from '../common/Logo';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 export type MainTabType =
   | 'dash'
@@ -37,6 +39,7 @@ interface SidebarProps {
   onOpenTargetModal: () => void;
   onOpenAuditModal: () => void;
   onOpenSheetsModal?: () => void;
+  onOpenInstallModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -48,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenTargetModal,
   onOpenAuditModal,
   onOpenSheetsModal,
+  onOpenInstallModal,
 }) => {
   const navItems: { id: MainTabType; label: string; sub: string; icon: React.ElementType }[] = [
     { id: 'dash', label: 'ภาพรวมยอดขาย', sub: 'Dashboard', icon: LayoutDashboard },
@@ -63,21 +67,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="hidden lg:flex flex-col w-72 bg-slate-900 text-slate-100 border-r border-slate-800/80 p-5 h-screen sticky top-0 overflow-y-auto select-none z-20 shadow-2xl">
       {/* Brand Header */}
-      <div className="flex items-center gap-3.5 px-3 py-3 mb-6 bg-slate-800/60 rounded-2xl border border-slate-700/50 backdrop-blur-sm">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-red-500 to-rose-700 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-red-500/25 ring-2 ring-red-400/20 flex-shrink-0">
-          N
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <h1 className="font-black text-white text-base tracking-tight leading-none">
-              NIPPON SALE
-            </h1>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          </div>
-          <p className="text-[11px] text-slate-400 font-medium mt-1 truncate">
-            ระบบบริหารงานขายสีนิปปอน
-          </p>
-        </div>
+      <div className="px-3 py-3 mb-6 bg-slate-800/60 rounded-2xl border border-slate-700/50 backdrop-blur-sm">
+        <Logo size="md" variant="full" />
       </div>
 
       {/* Main Navigation */}
@@ -193,6 +184,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[10px] text-slate-500">Audit Logs ตรวจสอบ</span>
           </div>
         </button>
+
+        {onOpenInstallModal && (
+          <PWAInstallButton onOpenModal={onOpenInstallModal} variant="sidebar" />
+        )}
 
         {onOpenSheetsModal && (
           <button

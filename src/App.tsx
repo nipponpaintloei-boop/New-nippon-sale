@@ -28,6 +28,8 @@ import { ResetModal } from './components/modals/ResetModal';
 import { SaleDetailModal } from './components/modals/SaleDetailModal';
 import { ProductModal } from './components/modals/ProductModal';
 import { GoogleSheetsModal } from './components/modals/GoogleSheetsModal';
+import { InstallAppModal } from './components/modals/InstallAppModal';
+import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { SyncToastContainer } from './components/common/SyncToastContainer';
 import { SaleEntry, Product } from './types';
 
@@ -46,6 +48,7 @@ function MainApp() {
   const [auditModalOpen, setAuditModalOpen] = useState<boolean>(false);
   const [resetModalOpen, setResetModalOpen] = useState<boolean>(false);
   const [sheetsModalOpen, setSheetsModalOpen] = useState<boolean>(false);
+  const [installModalOpen, setInstallModalOpen] = useState<boolean>(false);
 
   // Selected item modals
   const [selectedSale, setSelectedSale] = useState<SaleEntry | null>(null);
@@ -79,6 +82,7 @@ function MainApp() {
           onOpenTargetModal={() => setTargetModalOpen(true)}
           onOpenAuditModal={() => setAuditModalOpen(true)}
           onOpenSheetsModal={() => setSheetsModalOpen(true)}
+          onOpenInstallModal={() => setInstallModalOpen(true)}
         />
 
         {/* Center Main Stage */}
@@ -88,6 +92,7 @@ function MainApp() {
             onOpenDrawer={() => setIsDrawerOpen(true)}
             onOpenActionCenter={() => setCurrentTab('dash')}
             onOpenSheetsModal={() => setSheetsModalOpen(true)}
+            onOpenInstallModal={() => setInstallModalOpen(true)}
           />
 
           {/* View Content Stage */}
@@ -161,6 +166,7 @@ function MainApp() {
         onOpenSheetsModal={() => setSheetsModalOpen(true)}
         onOpenAuditModal={() => setAuditModalOpen(true)}
         onOpenResetModal={() => setResetModalOpen(true)}
+        onOpenInstallModal={() => setInstallModalOpen(true)}
       />
 
       {/* Modals */}
@@ -175,6 +181,7 @@ function MainApp() {
       <GallonRuleModal isOpen={gallonRuleModalOpen} onClose={() => setGallonRuleModalOpen(false)} />
       <ImportModal isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
       <GoogleSheetsModal isOpen={sheetsModalOpen} onClose={() => setSheetsModalOpen(false)} />
+      <InstallAppModal isOpen={installModalOpen} onClose={() => setInstallModalOpen(false)} />
       <AuditModal isOpen={auditModalOpen} onClose={() => setAuditModalOpen(false)} />
       <ResetModal isOpen={resetModalOpen} onClose={() => setResetModalOpen(false)} />
 
@@ -192,6 +199,9 @@ function MainApp() {
           setSelectedProduct(null);
         }}
       />
+
+      {/* Offline Status & Connectivity Indicator */}
+      <OfflineIndicator />
 
       {/* Non-blocking Auto-sync Toasts */}
       <SyncToastContainer />
