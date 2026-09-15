@@ -552,12 +552,12 @@ export const ImportModal: React.FC<ImportModalProps> = ({
               <>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">Sku</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700 font-bold">ชื่อสินค้า *</span>
+                <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ฟิล์มสี</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ขนาด</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">เบส</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">เบอร์สี</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ราคา</span>
                 <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700 font-bold">สต็อก</span>
-                <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded-lg border border-blue-200/60 dark:border-blue-700">ฟิล์มสี</span>
               </>
             ) : (
               <>
