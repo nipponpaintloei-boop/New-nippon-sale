@@ -417,10 +417,16 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!finalSku || existingSkus.has(finalSku)) {
         finalSku = finalSku ? `${finalSku}-${Date.now()}` : `NP-${Date.now()}`;
       }
+      // stock ที่กรอกมาต้องกลายเป็น "init" เพราะ recomputeStock จะคำนวณ
+      // stock ใหม่เสมอจาก init + inflow - sold (ไม่สนใจค่า stock ที่ส่งมาตรงๆ)
+      const desiredStock = Number(prod.stock) || 0;
       const newProd: Product = {
         ...prod,
         id: prod.id || `prod-${finalSku}`,
         sku: finalSku,
+        init: desiredStock,
+        inflow: Number(prod.inflow) || 0,
+        sold: 0,
       };
       const newProds = [newProd, ...products];
       const recomputed = recomputeStock(newProds, sales);
@@ -434,9 +440,19 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateProduct = useCallback(
     async (idOrSku: string, patch: Partial<Product>) => {
-      const newProds = products.map((p) =>
-        p.sku === idOrSku || p.id === idOrSku ? { ...p, ...patch } : p
-      );
+      const newProds = products.map((p) => {
+        if (p.sku !== idOrSku && p.id !== idOrSku) return p;
+        const merged = { ...p, ...patch };
+        // recomputeStock จะคำนวณ stock ใหม่จาก init + inflow - sold เสมอ
+        // ถ้ามีคนแก้ "stock" ตรงๆ (เช่นปุ่ม +/- หรือแก้ในฟอร์มสินค้า)
+        // ต้องแปลงกลับเป็นการปรับค่า init ไม่งั้นค่าที่แก้จะถูกเขียนทับทันที
+        if (patch.stock !== undefined) {
+          const inflow = Number(merged.inflow ?? p.inflow) || 0;
+          const sold = Number(p.sold) || 0;
+          merged.init = Number(patch.stock) - inflow + sold;
+        }
+        return merged;
+      });
       const recomputed = recomputeStock(newProds, sales);
       setProducts(recomputed);
       await storageSet(STORE_KEYS.products, JSON.stringify(recomputed));
