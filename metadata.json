@@ -1,1 +1,6 @@
-
+{
+  "name": "Nippon Sale",
+  "description": "ระบบบริหารยอดขาย สต็อกสินค้า คอมมิชชั่น และส่วนแบ่งการตลาด (Market Share) นิปปอนเพนต์",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
