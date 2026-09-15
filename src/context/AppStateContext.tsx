@@ -730,6 +730,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             inflow: incoming.inflow !== undefined ? incoming.inflow : target.inflow,
             size: incoming.size || target.size,
             base: incoming.base || target.base,
+            filmColor: incoming.filmColor || target.filmColor,
           };
         } else {
           addCount++;
