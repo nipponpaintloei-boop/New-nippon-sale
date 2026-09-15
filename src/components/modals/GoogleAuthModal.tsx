@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   FileSpreadsheet,
@@ -10,6 +10,8 @@ import {
   ExternalLink,
   Sparkles,
   Lock,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import {
@@ -48,6 +50,23 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
   const currentConfig = getGoogleSheetsConfig();
   const sheetsStatus = getConnectionStatus();
   const isAuthenticated = !!(currentUser || googleProfile);
+
+  const [copiedDev, setCopiedDev] = useState(false);
+  const [copiedPre, setCopiedPre] = useState(false);
+
+  const devOrigin = 'https://ais-dev-k5jxs6yno5sryudinyz57g-459159427758.asia-east1.run.app';
+  const preOrigin = 'https://ais-pre-k5jxs6yno5sryudinyz57g-459159427758.asia-east1.run.app';
+
+  const copyToClipboard = (text: string, type: 'dev' | 'pre') => {
+    navigator.clipboard.writeText(text);
+    if (type === 'dev') {
+      setCopiedDev(true);
+      setTimeout(() => setCopiedDev(false), 2000);
+    } else {
+      setCopiedPre(true);
+      setTimeout(() => setCopiedPre(false), 2000);
+    }
+  };
 
   const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
 
@@ -358,10 +377,38 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
                       />
                     </div>
                     
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 space-y-1 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800">
-                      <div className="font-bold text-slate-700 dark:text-slate-300">Authorized JavaScript origins ที่ต้องใส่ใน Google Cloud:</div>
-                      <div className="font-mono text-[9.5px] select-all text-blue-600 dark:text-blue-400 break-all">
-                        {typeof window !== 'undefined' ? window.location.origin : 'https://ais-dev-k5jxs6yno5sryudinyz57g-459159427758.asia-east1.run.app'}
+                    <div className="text-[11px] text-slate-600 dark:text-slate-300 space-y-2 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                      <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                        Authorized JavaScript origins ที่ต้องใส่ใน Google Cloud:
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                          <span className="font-mono text-[10px] text-slate-700 dark:text-slate-300 truncate mr-2">
+                            {devOrigin}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(devOrigin, 'dev')}
+                            className="flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/60 cursor-pointer flex-shrink-0"
+                          >
+                            {copiedDev ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            {copiedDev ? 'คัดลอกแล้ว' : 'คัดลอก'}
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                          <span className="font-mono text-[10px] text-slate-700 dark:text-slate-300 truncate mr-2">
+                            {preOrigin}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(preOrigin, 'pre')}
+                            className="flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/60 cursor-pointer flex-shrink-0"
+                          >
+                            {copiedPre ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            {copiedPre ? 'คัดลอกแล้ว' : 'คัดลอก'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

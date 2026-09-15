@@ -95,6 +95,16 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
     }
   };
 
+  const handleSelectSize = (size: string) => {
+    setSelectedSize(size);
+    if (selectedProduct && indexes.productIndex[selectedProduct]?.[size]) {
+      const bases = Object.keys(indexes.productIndex[selectedProduct][size]);
+      if (!bases.includes(selectedBase)) {
+        setSelectedBase(bases[0] || 'มาตรฐาน');
+      }
+    }
+  };
+
   const ensureBillId = (): string => {
     if (!billId) {
       const newId = 'bill-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
@@ -285,57 +295,129 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
                 ))}
               </div>
             )}
+
+            {/* Quick Product Pick Pills (สินค้ายอดนิยม/แนะนำ เลือกด่วน) */}
+            {!selectedProduct && (
+              <div className="pt-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                  สินค้ายอดนิยม (แตะเลือกได้ทันที):
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {indexes.productNames.slice(0, 6).map((pName) => (
+                    <button
+                      key={`quick-prod-${pName}`}
+                      type="button"
+                      onClick={() => handleSelectProduct(pName)}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/40 text-slate-700 dark:text-slate-300 hover:text-red-600 text-[11px] font-medium transition-colors border border-slate-200/60 dark:border-slate-700 cursor-pointer"
+                    >
+                      {pName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Size & Base & Color Code Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                ขนาดบรรจุ
-              </label>
-              <select
-                value={selectedSize}
-                onChange={(e) => setSelectedSize(e.target.value)}
-                disabled={!selectedProduct || availableSizes.length === 0}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 cursor-pointer"
-              >
-                {availableSizes.map((s, idx) => (
-                  <option key={`size-${s}-${idx}`} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+          {/* Quick Select: Size & Base & Color Code */}
+          <div className="space-y-4">
+            {/* Quick Select Size (ขนาดบรรจุ) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  ขนาดบรรจุ {selectedSize && <span className="text-red-600">({selectedSize})</span>}
+                </label>
+                {availableSizes.length > 0 && (
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    {availableSizes.length} ขนาดให้เลือก
+                  </span>
+                )}
+              </div>
+
+              {availableSizes.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {availableSizes.map((s, idx) => {
+                    const isSelected = selectedSize === s;
+                    return (
+                      <button
+                        key={`quick-size-${s}-${idx}`}
+                        type="button"
+                        onClick={() => handleSelectSize(s)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border shadow-xs ${
+                          isSelected
+                            ? 'bg-red-600 text-white border-red-600 shadow-red-500/25 ring-2 ring-red-500/30'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-750'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                        <span>{s}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 text-center">
+                  กรุณาค้นหาและเลือกสินค้าก่อนเพื่อดูขนาดบรรจุ
+                </div>
+              )}
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                เบส (Base)
-              </label>
-              <select
-                value={selectedBase}
-                onChange={(e) => setSelectedBase(e.target.value)}
-                disabled={!selectedProduct || availableBases.length === 0}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 cursor-pointer"
-              >
-                {availableBases.map((b, idx) => (
-                  <option key={`base-${b}-${idx}`} value={b}>
-                    {b || 'มาตรฐาน'}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Quick Select Base (เบสสี A, B, C, D) & Color Code */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
+              {/* Base Buttons (8 cols) */}
+              <div className="sm:col-span-8 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    เบสสี (Base) {selectedBase && <span className="text-red-600">({selectedBase})</span>}
+                  </label>
+                  {availableBases.length > 0 && (
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      กดเลือกเบสทันที
+                    </span>
+                  )}
+                </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                รหัสเฉดสี (Color)
-              </label>
-              <input
-                type="text"
-                value={colorCode}
-                onChange={(e) => setColorCode(e.target.value)}
-                placeholder="เช่น A5006, 0310"
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
+                {availableBases.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {availableBases.map((b, idx) => {
+                      const isSelected = selectedBase === b;
+                      const displayBase = b || 'มาตรฐาน';
+                      return (
+                        <button
+                          key={`quick-base-${b}-${idx}`}
+                          type="button"
+                          onClick={() => setSelectedBase(b)}
+                          className={`min-w-[54px] px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border shadow-xs ${
+                            isSelected
+                              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-slate-900/20 ring-2 ring-slate-400/30'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-750'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                          <span>{displayBase}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 text-center">
+                    {selectedProduct ? 'ไม่มีเบสให้เลือก (สินค้ามาตรฐาน)' : 'เลือกสินค้าเพื่อดูเบส'}
+                  </div>
+                )}
+              </div>
+
+              {/* Color Code Input (4 cols) */}
+              <div className="sm:col-span-4 space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  รหัสเฉดสี (Color No.)
+                </label>
+                <input
+                  type="text"
+                  value={colorCode}
+                  onChange={(e) => setColorCode(e.target.value)}
+                  placeholder="เช่น A5006, 0310"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-shadow"
+                />
+              </div>
             </div>
           </div>
 
