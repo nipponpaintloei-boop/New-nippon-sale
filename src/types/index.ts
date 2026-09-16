@@ -43,7 +43,6 @@ export interface SalesRowSupabase {
   name: string;
   size: string;
   base: string;
-  film_color?: string;
   price: number;
   color_code: string;
   tint_price: number;
