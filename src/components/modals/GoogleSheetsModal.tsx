@@ -86,11 +86,9 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
       setConfig(updated);
       setStatus(getConnectionStatus());
       setStatusMessage({
-        text: `เข้าสู่ระบบสำเร็จ${res.user?.name ? ` (ยินดีต้อนรับ ${res.user.name})` : ''} กำลังเปิด Google Drive ให้เลือกไฟล์...`,
+        text: `เข้าสู่ระบบสำเร็จ${res.user?.name ? ` (ยินดีต้อนรับ ${res.user.name})` : ''} กรุณาเลือกหรือสร้าง Spreadsheet ในขั้นตอนที่ 2 ด้านล่าง`,
         type: 'success',
       });
-
-      await handlePickSpreadsheet();
     } else {
       setStatusMessage({ text: res.error || 'เข้าสู่ระบบไม่สำเร็จ', type: 'error' });
     }
