@@ -387,6 +387,22 @@ export async function pickGoogleSpreadsheet(): Promise<{
 }
 
 /**
+ * Extracts a Google Spreadsheet ID from either a raw ID or a standard Sheets URL.
+ * This lets the app connect to an existing sheet without requiring Google Picker
+ * API Key/App ID.
+ */
+export function extractSpreadsheetId(input: string): string | null {
+  const value = String(input || '').trim();
+  if (!value) return null;
+
+  const match = value.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (match?.[1]) return match[1];
+
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(value)) return value;
+  return null;
+}
+
+/**
  * Fetches Google User Profile using Access Token
  */
 export async function fetchGoogleUserProfile(accessToken: string): Promise<{
@@ -418,13 +434,14 @@ export async function fetchGoogleUserProfile(accessToken: string): Promise<{
 /**
  * Requests Google OAuth token with user interaction popup
  */
-export async function loginWithGoogleSheets(clientId: string): Promise<{
+export async function loginWithGoogleSheets(clientId?: string): Promise<{
   success: boolean;
   error?: string;
   user?: { email: string; name?: string; picture?: string };
 }> {
-  if (!clientId || !clientId.trim()) {
-    return { success: false, error: 'กรุณากรอก Google OAuth Client ID' };
+  const resolvedClientId = (clientId || getGoogleClientId()).trim();
+  if (!resolvedClientId) {
+    return { success: false, error: 'ยังไม่ได้ตั้งค่า Google OAuth Client ID ของแอป กรุณาตั้งค่า VITE_GOOGLE_CLIENT_ID ใน Deployment หรือกรอก Client ID' };
   }
 
   const loaded = await loadGsiScript();
@@ -435,7 +452,7 @@ export async function loginWithGoogleSheets(clientId: string): Promise<{
   return new Promise((resolve) => {
     try {
       gisTokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-        client_id: clientId.trim(),
+        client_id: resolvedClientId,
         scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
         prompt: 'consent',
         callback: async (response: any) => {
@@ -447,7 +464,7 @@ export async function loginWithGoogleSheets(clientId: string): Promise<{
           if (response.access_token) {
             const expiresIn = Number(response.expires_in) || 3599;
             setAccessToken(response.access_token, expiresIn);
-            saveGoogleSheetsConfig({ clientId: clientId.trim() });
+            saveGoogleSheetsConfig({ clientId: resolvedClientId });
 
             // Fetch user info for seamless login & profile
             const profile = await fetchGoogleUserProfile(response.access_token);
