@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { User } from '@supabase/supabase-js';
 import {
   AppSettings,
+  BrandProfile,
   CustomerMeta,
   GallonIncentiveRule,
   MksDayData,
@@ -120,6 +121,44 @@ function seedSales(): SaleEntry[] {
   }));
 }
 
+function normalizeBrandKey(value: string | undefined): string {
+  const key = String(value || 'SALE_PAINT_PRO')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return key || 'SALE_PAINT_PRO';
+}
+
+function buildInitialBrandProfiles(settings: AppSettings): { activeBrandKey: string; brandProfiles: Record<string, BrandProfile> } {
+  const activeBrandKey = normalizeBrandKey(settings.activeBrandKey || settings.brandConfig?.brandName);
+  if (settings.brandProfiles && Object.keys(settings.brandProfiles).length > 0) {
+    return { activeBrandKey, brandProfiles: settings.brandProfiles };
+  }
+
+  const profile: BrandProfile = {
+    key: activeBrandKey,
+    brandConfig: settings.brandConfig || {
+      brandName: 'Sale Paint Pro',
+      subTitle: 'ระบบบริหารงานขายสีและสต็อก',
+      branchName: 'สาขาเลย (Loei Branch)',
+      themeColor: 'blue',
+      badgeText: 'PRO',
+    },
+    shortName: settings.brandConfig?.brandName?.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_'),
+    monthlyTarget: Object.values(settings.targets || {})[0] || undefined,
+    targets: { ...(settings.targets || {}) },
+    headcounts: { ...(settings.headcounts || {}) },
+    commissionTiers: settings.commissionTiers ? settings.commissionTiers.map((r) => ({ ...r })) : undefined,
+    gallonIncentives: Object.fromEntries(
+      Object.entries(settings.gallonIncentives || {}).map(([month, rules]) => [month, rules.map((r) => ({ ...r }))])
+    ),
+    updatedAt: new Date().toISOString(),
+  };
+
+  return { activeBrandKey, brandProfiles: { [activeBrandKey]: profile } };
+}
+
 export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<SaleEntry[]>([]);
@@ -127,6 +166,15 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     targets: { ...TARGETS_SEED },
     headcounts: {},
     gallonIncentives: {},
+    brandConfig: {
+      brandName: 'Sale Paint Pro',
+      subTitle: 'ระบบบริหารงานขายสีและสต็อก',
+      branchName: 'สาขาเลย (Loei Branch)',
+      themeColor: 'blue',
+      badgeText: 'PRO',
+    },
+    activeBrandKey: 'SALE_PAINT_PRO',
+    brandProfiles: {},
   });
   const [mksDayHistory, setMksDayHistory] = useState<Record<string, MksDayData>>({});
   const [mksWeekHistory, setMksWeekHistory] = useState<Record<string, MksWeekData>>({});
@@ -171,7 +219,18 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!parsedSettings.targets) parsedSettings.targets = { ...TARGETS_SEED };
       if (!parsedSettings.headcounts) parsedSettings.headcounts = {};
       if (!parsedSettings.gallonIncentives) parsedSettings.gallonIncentives = {};
+
+      // Backward-compatible migration: keep the existing settings intact while creating
+      // the first brand profile. Existing apps therefore become multi-brand capable without
+      // losing the current brand, targets, or commission rules.
+      const migratedBrands = buildInitialBrandProfiles(parsedSettings);
+      parsedSettings = {
+        ...parsedSettings,
+        activeBrandKey: migratedBrands.activeBrandKey,
+        brandProfiles: migratedBrands.brandProfiles,
+      };
       setSettings(parsedSettings);
+      await storageSet(STORE_KEYS.settings, JSON.stringify(parsedSettings));
 
       // 3. Sales
       let loadedSales: SaleEntry[] = [];
@@ -402,7 +461,42 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateSettings = useCallback(
     async (patch: Partial<AppSettings>) => {
-      const updated = { ...settings, ...patch };
+      let updated: AppSettings = { ...settings, ...patch };
+
+      // Keep the active brand profile in sync whenever brand-specific settings change.
+      // This lets existing Target/Commission modals continue to use AppSettings while
+      // preserving their values separately for each selected brand.
+      const activeKey = normalizeBrandKey(updated.activeBrandKey || updated.brandConfig?.brandName);
+      const profiles = { ...(updated.brandProfiles || {}) };
+      const existing = profiles[activeKey];
+      if (updated.brandConfig) {
+        profiles[activeKey] = {
+          key: activeKey,
+          brandConfig: { ...updated.brandConfig },
+          shortName: existing?.shortName || activeKey,
+          monthlyTarget: Object.values(updated.targets || {})[0] || existing?.monthlyTarget,
+          targets: { ...(updated.targets || {}) },
+          headcounts: { ...(updated.headcounts || {}) },
+          commissionTiers: updated.commissionTiers?.map((r) => ({ ...r })),
+          gallonIncentives: Object.fromEntries(
+            Object.entries(updated.gallonIncentives || {}).map(([month, rules]) => [month, rules.map((r) => ({ ...r }))])
+          ),
+          updatedAt: new Date().toISOString(),
+        };
+      } else if (existing) {
+        profiles[activeKey] = {
+          ...existing,
+          targets: { ...(updated.targets || {}) },
+          headcounts: { ...(updated.headcounts || {}) },
+          commissionTiers: updated.commissionTiers?.map((r) => ({ ...r })),
+          gallonIncentives: Object.fromEntries(
+            Object.entries(updated.gallonIncentives || {}).map(([month, rules]) => [month, rules.map((r) => ({ ...r }))])
+          ),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      updated = { ...updated, activeBrandKey: activeKey, brandProfiles: profiles };
+
       setSettings(updated);
       await storageSet(STORE_KEYS.settings, JSON.stringify(updated));
       return true;
@@ -978,10 +1072,30 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const resetAllData = useCallback(async () => {
     const sProds = seedProducts();
     const sSales = seedSales();
+    const defaultBrandConfig = {
+      brandName: 'Sale Paint Pro',
+      subTitle: 'ระบบบริหารงานขายสีและสต็อก',
+      branchName: 'สาขาเลย (Loei Branch)',
+      themeColor: 'blue' as const,
+      badgeText: 'PRO',
+    };
     const defaultSettings: AppSettings = {
       targets: { ...TARGETS_SEED },
       headcounts: {},
       gallonIncentives: {},
+      brandConfig: defaultBrandConfig,
+      activeBrandKey: 'SALE_PAINT_PRO',
+      brandProfiles: {},
+    };
+    defaultSettings.brandProfiles = {
+      SALE_PAINT_PRO: {
+        key: 'SALE_PAINT_PRO',
+        brandConfig: defaultBrandConfig,
+        targets: { ...TARGETS_SEED },
+        headcounts: {},
+        gallonIncentives: {},
+        updatedAt: new Date().toISOString(),
+      },
     };
     await clearSalesTable();
     await storageSet(STORE_KEYS.products, JSON.stringify(sProds));
