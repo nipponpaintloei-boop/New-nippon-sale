@@ -64,8 +64,11 @@ export type IncentiveConditionType =
 export interface GallonIncentiveRule {
   id?: string;
   name: string;
-  size: string; // 'ALL' or '5GL', '2.5GL', '1GL', '1/4GL'
-  base?: string | string[]; // '__ALL__' or specific base(s)
+  size: string; // Legacy single-size field: 'ALL' or one size
+  sizes?: string[]; // New multi-size filter. Empty/undefined means all sizes.
+  base?: string | string[]; // Legacy base filter
+  baseMode?: 'all' | 'include' | 'exclude'; // New base filter mode
+  bases?: string[]; // New base values used with include/exclude
   mode?: 'perUnit' | 'perBundle';
   bundleSize?: number;
   bundleReward?: number;
