@@ -8,9 +8,7 @@ import {
   RefreshCw,
   PlusCircle,
   Link2,
-  HelpCircle,
   LogOut,
-  Sliders,
   Check,
   ShieldCheck,
 } from 'lucide-react';
@@ -21,9 +19,9 @@ import {
   loginWithGoogleSheets,
   createNewSpreadsheet,
   verifySpreadsheet,
-  pickGoogleSpreadsheet,
   syncToGoogleSheets,
   disconnectGoogleSheets,
+  extractSpreadsheetId,
   GoogleSheetsConfig,
 } from '../../services/googleSheetsSync';
 import { useAppState } from '../../context/AppStateContext';
@@ -38,6 +36,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
 
   const [config, setConfig] = useState<GoogleSheetsConfig>(getGoogleSheetsConfig());
   const [clientIdInput, setClientIdInput] = useState<string>('');
+  const [spreadsheetInput, setSpreadsheetInput] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'create' | 'existing'>('create');
   const [newSheetTitle, setNewSheetTitle] = useState<string>('');
 
@@ -53,6 +52,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
       const currentConfig = getGoogleSheetsConfig();
       setConfig(currentConfig);
       setClientIdInput(currentConfig.clientId || '');
+      setSpreadsheetInput(currentConfig.spreadsheetUrl || currentConfig.spreadsheetId || '');
       setStatus(getConnectionStatus());
       setNewSheetTitle(`Nippon Paint - ยอดขายและสต็อก (${new Date().toLocaleDateString('th-TH')})`);
       setStatusMessage(null);
@@ -61,17 +61,12 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
 
   if (!isOpen) return null;
 
-  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
 
   const handleLogin = async () => {
-    if (!clientIdInput.trim()) {
-      setStatusMessage({ text: 'กรุณาระบุ Google OAuth Client ID', type: 'error' });
-      return;
-    }
     setIsLoadingAuth(true);
     setStatusMessage(null);
 
-    const res = await loginWithGoogleSheets(clientIdInput);
+    const res = await loginWithGoogleSheets(clientIdInput || undefined);
     setIsLoadingAuth(false);
 
     if (res.success) {
@@ -94,31 +89,37 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
     }
   };
 
-  const handlePickSpreadsheet = async () => {
+  const handleConnectExistingByUrl = async () => {
+    if (!isConnected) {
+      setStatusMessage({ text: 'กรุณาลงชื่อเข้าใช้ Google ก่อน', type: 'error' });
+      return;
+    }
+
+    const spreadsheetId = extractSpreadsheetId(spreadsheetInput);
+    if (!spreadsheetId) {
+      setStatusMessage({
+        text: 'กรุณาวางลิงก์ Google Sheets หรือ Spreadsheet ID ที่ถูกต้อง',
+        type: 'error',
+      });
+      return;
+    }
+
     setIsLoadingSheet(true);
     setStatusMessage(null);
-
-    const res = await pickGoogleSpreadsheet();
-    if (!res.success || !res.spreadsheetId) {
-      setIsLoadingSheet(false);
-      if (res.error !== 'ยกเลิกการเลือก Spreadsheet') {
-        setStatusMessage({ text: res.error || 'ไม่สามารถเลือก Spreadsheet ได้', type: 'error' });
-      }
-      return;
-    }
-
-    const verified = await verifySpreadsheet(res.spreadsheetId);
-    if (!verified.success) {
-      setIsLoadingSheet(false);
-      setStatusMessage({ text: verified.error || 'ตรวจสอบ Spreadsheet ไม่สำเร็จ', type: 'error' });
-      return;
-    }
-
-    setConfig(getGoogleSheetsConfig());
-    setStatus(getConnectionStatus());
+    const verified = await verifySpreadsheet(spreadsheetId);
     setIsLoadingSheet(false);
+
+    if (!verified.success) {
+      setStatusMessage({ text: verified.error || 'เชื่อมต่อ Spreadsheet ไม่สำเร็จ', type: 'error' });
+      return;
+    }
+
+    const updated = getGoogleSheetsConfig();
+    setConfig(updated);
+    setStatus(getConnectionStatus());
+    setSpreadsheetInput(updated.spreadsheetUrl || spreadsheetId);
     setStatusMessage({
-      text: `เชื่อมต่อกับ "${verified.title || res.spreadsheetName || 'Spreadsheet'}" เรียบร้อยแล้ว`,
+      text: `เชื่อมต่อกับ "${verified.title || 'Google Spreadsheet'}" เรียบร้อยแล้ว`,
       type: 'success',
     });
 
@@ -290,14 +291,12 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
             </div>
           )}
 
-          {/* Step 1: OAuth Authentication */}
+          {/* Step 1: Google authentication */}
           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-red-600 text-white font-mono text-xs flex items-center justify-center font-black">
-                  1
-                </span>
-                <span>Google OAuth Client ID</span>
+                <span className="w-5 h-5 rounded-full bg-red-600 text-white font-mono text-xs flex items-center justify-center font-black">1</span>
+                <span>เชื่อมบัญชี Google</span>
               </span>
               {isConnected && (
                 <span className="text-emerald-600 font-bold flex items-center gap-1 text-[11px]">
@@ -306,36 +305,23 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
               )}
             </div>
 
+            <p className="text-[11px] text-slate-500">
+              ใช้สิทธิ์บัญชี Google ของคุณเพื่ออ่านและบันทึกข้อมูลลง Google Sheets ที่คุณเลือก
+            </p>
+
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                Client ID (สร้างจาก Google Cloud Console):
+                Google OAuth Client ID
               </label>
               <input
                 type="text"
                 value={clientIdInput}
                 onChange={(e) => setClientIdInput(e.target.value)}
-                placeholder="ตัวอย่าง: 123456789-xxxxxxxx.apps.googleusercontent.com"
+                placeholder="ระบบจะใช้ Client ID จาก Deployment อัตโนมัติ"
                 className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-500"
               />
-            </div>
-
-            {/* Quick guide */}
-            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 space-y-1">
-              <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                <HelpCircle className="w-3.5 h-3.5 text-blue-500" />
-                <span>วิธีตั้งค่าใน Google Cloud Console:</span>
-              </div>
-              <p>
-                1. เปิด <strong>Google Cloud Console &gt; APIs &amp; Services &gt; Credentials</strong>
-              </p>
-              <p>
-                2. สร้าง OAuth 2.0 Client IDs ชนิด <strong>Web application</strong>
-              </p>
-              <p>
-                3. ในช่อง <strong>Authorized JavaScript origins</strong> ให้เพิ่ม:
-                <code className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-red-600 dark:text-red-400 font-mono text-[10px]">
-                  {currentOrigin}
-                </code>
+              <p className="mt-1 text-[10px] text-slate-400">
+                ถ้า Deployment ตั้งค่า VITE_GOOGLE_CLIENT_ID แล้ว ไม่จำเป็นต้องกรอกช่องนี้
               </p>
             </div>
 
@@ -346,11 +332,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
                 disabled={isLoadingAuth}
                 className="flex-1 py-2 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold flex items-center justify-center gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
               >
-                {isLoadingAuth ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <FileSpreadsheet className="w-4 h-4" />
-                )}
+                {isLoadingAuth ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
                 <span>{isConnected ? 'สลับบัญชี Google' : 'ลงชื่อเข้าใช้ด้วย Google'}</span>
               </button>
 
@@ -442,31 +424,36 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({ isOpen, on
                       <FileSpreadsheet className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <div className="font-bold text-slate-900 dark:text-white text-sm">เลือกไฟล์จาก Google Drive</div>
+                      <div className="font-bold text-slate-900 dark:text-white text-sm">เชื่อม Google Sheet ที่มีอยู่แล้ว</div>
                       <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">
-                        ไม่ต้องคัดลอกลิงก์หรือ Spreadsheet ID ระบบจะแสดงเฉพาะไฟล์ Google Sheets ที่คุณมีสิทธิ์เลือก
+                        เปิด Google Sheet ของคุณ แล้วกดแชร์/คัดลอกลิงก์ จากนั้นนำลิงก์มาวางที่นี่ ไม่จำเป็นต้องใช้ Google Picker API Key
                       </p>
                     </div>
                   </div>
                 </div>
 
+                <input
+                  type="text"
+                  value={spreadsheetInput}
+                  onChange={(e) => setSpreadsheetInput(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                  disabled={!isConnected || isLoadingSheet}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                />
+
                 <button
                   type="button"
-                  onClick={handlePickSpreadsheet}
-                  disabled={isLoadingSheet || !isConnected}
+                  onClick={handleConnectExistingByUrl}
+                  disabled={isLoadingSheet || !isConnected || !spreadsheetInput.trim()}
                   className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
                 >
-                  {isLoadingSheet ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <FileSpreadsheet className="w-4 h-4" />
-                  )}
-                  <span>{config.spreadsheetId ? 'เปลี่ยนไฟล์ Google Sheets' : 'เลือกไฟล์จาก Google Drive'}</span>
+                  {isLoadingSheet ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                  <span>{config.spreadsheetId ? 'เปลี่ยนไปใช้ Spreadsheet นี้' : 'เชื่อมต่อ Spreadsheet นี้'}</span>
                 </button>
 
                 {!isConnected && (
                   <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                    กรุณาเชื่อมต่อ Google ด้านบนก่อน ระบบจึงจะเปิดตัวเลือกไฟล์จาก Drive ได้
+                    กรุณาเชื่อมต่อ Google ด้านบนก่อน
                   </p>
                 )}
               </div>
