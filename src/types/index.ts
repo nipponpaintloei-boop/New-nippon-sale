@@ -37,24 +37,6 @@ export interface SaleEntry {
   customerPhone?: string;
 }
 
-export interface SalesRowSupabase {
-  id: string;
-  date: string;
-  name: string;
-  size: string;
-  base: string;
-  film_color?: string;
-  price: number;
-  color_code: string;
-  tint_price: number;
-  qty: number;
-  total: number;
-  sku: string;
-  seed: boolean;
-  bill_id: string | null;
-  customer_name: string;
-  customer_phone: string;
-}
 
 export type IncentiveConditionType =
   | 'per_unit'           // จ่ายรายถังโดยตรง (เช่น สินค้า A ได้ค่ารายถัง 50 บาท)
@@ -138,9 +120,6 @@ export interface AppSettings {
   gallonIncentives?: Record<string, GallonIncentiveRule[]>;
   orderByName?: string;
   brandConfig?: BrandConfig;
-  /** Saved configuration per brand; the active profile is selected by activeBrandKey. */
-  brandProfiles?: Record<string, BrandProfile>;
-  activeBrandKey?: string;
 }
 
 
@@ -211,21 +190,6 @@ export interface CommissionPerHeadTier {
   amt: number;
 }
 
-export interface BrandProfile {
-  key: string;
-  brandConfig: BrandConfig;
-  /** Optional short code for future brand-specific reports/Sheets. */
-  shortName?: string;
-  /** Default target reference retained from the original multi-brand design. */
-  monthlyTarget?: number;
-  /** Whether a new brand should start from the seeded catalog or an empty catalog. */
-  initialCatalogChoice?: 'seed' | 'empty';
-  targets: Record<string, number>;
-  headcounts?: Record<string, number>;
-  commissionTiers?: CommissionTierRule[];
-  gallonIncentives?: Record<string, GallonIncentiveRule[]>;
-  updatedAt?: string;
-}
 
 export interface MksBrand {
   key: string;
