@@ -23,6 +23,7 @@ export const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
   const [name, setName] = useState<string>('');
   const [size, setSize] = useState<string>('');
   const [base, setBase] = useState<string>('');
+  const [filmColor, setFilmColor] = useState<string>('');
   const [colorCode, setColorCode] = useState<string>('');
   const [price, setPrice] = useState<number>(0);
   const [tintPrice, setTintPrice] = useState<number>(0);
@@ -36,6 +37,7 @@ export const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
       setName(sale.name);
       setSize(sale.size || '');
       setBase(sale.base || '');
+      setFilmColor(sale.filmColor || '');
       setColorCode(sale.colorCode || '');
       setPrice(sale.price || 0);
       setTintPrice(sale.tintPrice || 0);
@@ -55,6 +57,7 @@ export const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
       name,
       size,
       base,
+      filmColor,
       colorCode,
       price: Number(price),
       tintPrice: Number(tintPrice),
@@ -122,7 +125,7 @@ export const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ขนาด</label>
               <input
@@ -138,6 +141,16 @@ export const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
                 type="text"
                 value={base}
                 onChange={(e) => setBase(e.target.value)}
+                className="w-full px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ฟิล์มสี</label>
+              <input
+                type="text"
+                value={filmColor}
+                onChange={(e) => setFilmColor(e.target.value)}
+                placeholder="-"
                 className="w-full px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
               />
             </div>
