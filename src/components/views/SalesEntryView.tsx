@@ -104,7 +104,15 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
     const colorMap = filmMap[filmKey];
     if (!colorMap) return null;
     const colorKey = colorCode.trim() || '__NO_COLOR__';
-    return colorMap[colorKey] || (availableColorCodes.length === 1 ? colorMap[availableColorCodes[0].key] : null) || null;
+    // For mix/base products, the color code can be entered manually even when
+    // that exact code does not exist as a Product row. In that case use the
+    // variant's no-color row as the pricing/SKU source.
+    return (
+      colorMap[colorKey] ||
+      colorMap['__NO_COLOR__'] ||
+      (availableColorCodes.length === 1 ? colorMap[availableColorCodes[0].key] : null) ||
+      null
+    );
   }, [selectedProduct, selectedSize, selectedBase, selectedFilmColor, colorCode, availableColorCodes, indexes]);
 
   const unitPrice = matchedRow ? matchedRow.price : 0;
@@ -196,6 +204,7 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
       name: selectedProduct,
       size: selectedSize === 'มาตรฐาน' ? '' : selectedSize,
       base: selectedBase === 'มาตรฐาน' ? '' : selectedBase,
+      filmColor: selectedFilmColor.trim(),
       price: matchedRow.price,
       colorCode: colorCode.trim(),
       tintPrice: t,
