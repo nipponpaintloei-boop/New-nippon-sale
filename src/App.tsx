@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppStateProvider } from './context/AppStateContext';
 import { Sidebar, MainTabType } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
@@ -29,13 +29,15 @@ import { SaleDetailModal } from './components/modals/SaleDetailModal';
 import { ProductModal } from './components/modals/ProductModal';
 import { GoogleSheetsModal } from './components/modals/GoogleSheetsModal';
 import { GoogleAuthModal } from './components/modals/GoogleAuthModal';
-import { InstallAppModal } from './components/modals/InstallAppModal';
 import { BrandSettingsModal } from './components/modals/BrandSettingsModal';
+import { InstallAppModal } from './components/modals/InstallAppModal';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { SyncToastContainer } from './components/common/SyncToastContainer';
 import { SaleEntry, Product } from './types';
+import { useAppState } from './context/AppStateContext';
 
 function MainApp() {
+  const { currentUser, googleProfile, isLoading } = useAppState();
   const [currentTab, setCurrentTab] = useState<MainTabType>('dash');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
@@ -52,8 +54,12 @@ function MainApp() {
   const [resetModalOpen, setResetModalOpen] = useState<boolean>(false);
   const [sheetsModalOpen, setSheetsModalOpen] = useState<boolean>(false);
   const [googleAuthModalOpen, setGoogleAuthModalOpen] = useState<boolean>(false);
-  const [installModalOpen, setInstallModalOpen] = useState<boolean>(false);
   const [brandModalOpen, setBrandModalOpen] = useState<boolean>(false);
+  const [installModalOpen, setInstallModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isLoading && !currentUser && !googleProfile) setGoogleAuthModalOpen(true);
+  }, [isLoading, currentUser, googleProfile]);
 
   // Selected item modals
   const [selectedSale, setSelectedSale] = useState<SaleEntry | null>(null);
@@ -207,9 +213,10 @@ function MainApp() {
         isOpen={googleAuthModalOpen}
         onClose={() => setGoogleAuthModalOpen(false)}
         onOpenSheetsSetup={() => setSheetsModalOpen(true)}
+        onOpenBrandSetup={() => setBrandModalOpen(true)}
       />
-      <InstallAppModal isOpen={installModalOpen} onClose={() => setInstallModalOpen(false)} />
       <BrandSettingsModal isOpen={brandModalOpen} onClose={() => setBrandModalOpen(false)} />
+      <InstallAppModal isOpen={installModalOpen} onClose={() => setInstallModalOpen(false)} />
       <AuditModal isOpen={auditModalOpen} onClose={() => setAuditModalOpen(false)} />
       <ResetModal isOpen={resetModalOpen} onClose={() => setResetModalOpen(false)} />
 
