@@ -144,12 +144,15 @@ npm run build
      - `http://localhost:3000` (สำหรับทดสอบในเครื่อง)
      - `https://your-app.vercel.app` (URL ที่ได้จาก Vercel หรือ Production Domain)
 6. คัดลอก **Client ID** (มีลักษณะลงท้ายด้วย `.apps.googleusercontent.com`)
-7. นำไปกรอกในเว็บแอพได้ 2 วิธี:
-   - **วิธีที่ 1**: เปิดเว็บแอพ > คลิกปุ่ม **"เชื่อม Google Sheets"** ที่เมนูด้านบนขวา > วาง Client ID ในหน้าต่างตั้งค่า
-   - **วิธีที่ 2**: กำหนดในไฟล์ `.env` หรือ Environment Variables บน Vercel:
-     ```env
-     VITE_GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
-     ```
+7. ตั้งค่า Client ID ใน Environment Variables ของระบบที่ใช้ Deploy:
+   ```env
+   VITE_GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+   ```
+   จากนั้น Build/Deploy ใหม่
+
+8. ในแอปกด **"เชื่อม Google Sheets"** > ลงชื่อเข้าใช้ Google > เลือก **"เชื่อม Google Sheet ที่มีอยู่แล้ว"** > วางลิงก์ Google Sheets ของคุณ > กดเชื่อมต่อ
+
+> **หมายเหตุ:** การวางลิงก์ Spreadsheet โดยตรงไม่ต้องใช้ `VITE_GOOGLE_API_KEY` หรือ `VITE_GOOGLE_APP_ID` สำหรับการใช้งานปกติ
 
 ---
 
