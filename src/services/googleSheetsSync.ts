@@ -4,6 +4,7 @@
  */
 
 import { Product, SaleEntry } from '../types';
+import { getSavedGoogleProfile, getGoogleClientId } from './auth';
 
 export interface GoogleSheetsConfig {
   clientId: string;
@@ -24,6 +25,13 @@ export interface SyncToastEvent {
   duration?: number;
   actionLabel?: string;
   onAction?: () => void;
+}
+
+function accountKey(key: string): string {
+  const profile = getSavedGoogleProfile();
+  const identity = profile?.sub || profile?.email?.trim().toLowerCase();
+  const safe = identity ? encodeURIComponent(identity).replace(/%/g, '_') : 'anonymous';
+  return `${key}:account:${safe}`;
 }
 
 const STORAGE_KEYS = {
@@ -103,14 +111,16 @@ export function getGoogleSheetsConfig(): GoogleSheetsConfig {
   let lastSyncStatus: 'success' | 'error' | 'idle' = 'idle';
 
   try {
-    clientId = localStorage.getItem(STORAGE_KEYS.CLIENT_ID) || ((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '');
-    spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID) || ((import.meta as any).env?.VITE_GOOGLE_SPREADSHEET_ID || '');
-    spreadsheetName = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_NAME) || '';
-    spreadsheetUrl = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_URL) || '';
-    const autoSyncVal = localStorage.getItem(STORAGE_KEYS.AUTO_SYNC);
+    clientId = getGoogleClientId();
+    spreadsheetId = localStorage.getItem(accountKey(STORAGE_KEYS.SPREADSHEET_ID)) || '';
+    spreadsheetName = localStorage.getItem(accountKey(STORAGE_KEYS.SPREADSHEET_NAME)) || '';
+    spreadsheetUrl = localStorage.getItem(accountKey(STORAGE_KEYS.SPREADSHEET_URL)) || '';
+    const savedClientId = localStorage.getItem(accountKey(STORAGE_KEYS.CLIENT_ID));
+    if (savedClientId) clientId = savedClientId;
+    const autoSyncVal = localStorage.getItem(accountKey(STORAGE_KEYS.AUTO_SYNC));
     autoSyncEnabled = autoSyncVal !== null ? autoSyncVal === 'true' : true;
-    lastSyncTime = localStorage.getItem(STORAGE_KEYS.LAST_SYNC_TIME) || undefined;
-    const statusVal = localStorage.getItem(STORAGE_KEYS.LAST_SYNC_STATUS);
+    lastSyncTime = localStorage.getItem(accountKey(STORAGE_KEYS.LAST_SYNC_TIME)) || undefined;
+    const statusVal = localStorage.getItem(accountKey(STORAGE_KEYS.LAST_SYNC_STATUS));
     if (statusVal === 'success' || statusVal === 'error') {
       lastSyncStatus = statusVal;
     }
@@ -131,26 +141,26 @@ export function getGoogleSheetsConfig(): GoogleSheetsConfig {
 
 export function saveGoogleSheetsConfig(patch: Partial<GoogleSheetsConfig>): void {
   try {
-    if (patch.clientId !== undefined) {
-      localStorage.setItem(STORAGE_KEYS.CLIENT_ID, patch.clientId.trim());
+    if (patch.clientId !== undefined && patch.clientId.trim()) {
+      localStorage.setItem(accountKey(STORAGE_KEYS.CLIENT_ID), patch.clientId.trim());
     }
     if (patch.spreadsheetId !== undefined) {
-      localStorage.setItem(STORAGE_KEYS.SPREADSHEET_ID, patch.spreadsheetId.trim());
+      localStorage.setItem(accountKey(STORAGE_KEYS.SPREADSHEET_ID), patch.spreadsheetId.trim());
     }
     if (patch.spreadsheetName !== undefined) {
-      localStorage.setItem(STORAGE_KEYS.SPREADSHEET_NAME, patch.spreadsheetName);
+      localStorage.setItem(accountKey(STORAGE_KEYS.SPREADSHEET_NAME), patch.spreadsheetName);
     }
     if (patch.spreadsheetUrl !== undefined) {
-      localStorage.setItem(STORAGE_KEYS.SPREADSHEET_URL, patch.spreadsheetUrl);
+      localStorage.setItem(accountKey(STORAGE_KEYS.SPREADSHEET_URL), patch.spreadsheetUrl);
     }
     if (patch.autoSyncEnabled !== undefined) {
-      localStorage.setItem(STORAGE_KEYS.AUTO_SYNC, String(patch.autoSyncEnabled));
+      localStorage.setItem(accountKey(STORAGE_KEYS.AUTO_SYNC), String(patch.autoSyncEnabled));
     }
     if (patch.lastSyncTime !== undefined) {
-      localStorage.setItem(STORAGE_KEYS.LAST_SYNC_TIME, patch.lastSyncTime);
+      localStorage.setItem(accountKey(STORAGE_KEYS.LAST_SYNC_TIME), patch.lastSyncTime);
     }
     if (patch.lastSyncStatus !== undefined) {
-      localStorage.setItem(STORAGE_KEYS.LAST_SYNC_STATUS, patch.lastSyncStatus);
+      localStorage.setItem(accountKey(STORAGE_KEYS.LAST_SYNC_STATUS), patch.lastSyncStatus);
     }
   } catch (e) {
     console.error('Failed to save Google Sheets config to localStorage:', e);
@@ -307,14 +317,8 @@ export async function pickGoogleSpreadsheet(): Promise<{
   // Google Picker configuration.
   // Environment variables can override these defaults for another deployment.
   // The API key is intentionally restricted in Google Cloud to the Picker/Drive APIs.
-  const apiKey = String(
-    (import.meta as any).env?.VITE_GOOGLE_API_KEY ||
-      'AIzaSyDJwNEbcziKYgCOgdWouK0Rp1O1Yn9d5bA'
-  ).trim();
-  const appId = String(
-    (import.meta as any).env?.VITE_GOOGLE_APP_ID ||
-      '178790721803'
-  ).trim();
+  const apiKey = String((import.meta as any).env?.VITE_GOOGLE_API_KEY || '').trim();
+  const appId = String((import.meta as any).env?.VITE_GOOGLE_APP_ID || '').trim();
 
   if (!apiKey || !appId) {
     return {

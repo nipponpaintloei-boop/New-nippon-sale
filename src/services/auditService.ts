@@ -1,11 +1,13 @@
 import { RECENT_EDIT_ACTIONS } from '../data/constants';
 import { AppSettings, AuditItem, AuditLogEntry } from '../types';
+import { getAccountStorageNamespace } from './storage';
 
-const AUDIT_STORAGE_KEY = 'nippon-sale:audit-logs';
+const AUDIT_STORAGE_KEY = 'audit-logs';
+const getAuditStorageKey = () => `${getAccountStorageNamespace()}${AUDIT_STORAGE_KEY}`;
 
 export function getAuditLogs(): AuditLogEntry[] {
   try {
-    const raw = localStorage.getItem(AUDIT_STORAGE_KEY);
+    const raw = localStorage.getItem(getAuditStorageKey());
     if (!raw) {
       return [
         {
@@ -34,7 +36,7 @@ export function logAuditAction(action: string, details: string, user = 'PC à¸žà¸
       details,
     };
     const updated = [entry, ...current].slice(0, 300);
-    localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(getAuditStorageKey(), JSON.stringify(updated));
   } catch (err) {
     console.error('Failed to write audit log', err);
   }
@@ -42,7 +44,7 @@ export function logAuditAction(action: string, details: string, user = 'PC à¸žà¸
 
 export function clearAuditLogs(): void {
   try {
-    localStorage.removeItem(AUDIT_STORAGE_KEY);
+    localStorage.removeItem(getAuditStorageKey());
   } catch (err) {
     console.error('Failed to clear audit logs', err);
   }
