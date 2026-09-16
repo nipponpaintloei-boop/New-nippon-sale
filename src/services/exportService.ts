@@ -118,6 +118,7 @@ export function exportSalesToExcel(sales: SaleEntry[], filename = 'nippon-sales.
     ชื่อสินค้า: s.name,
     ขนาด: s.size,
     เบส: s.base,
+    ฟิล์มสี: s.filmColor || '',
     รหัสเฉดสี: s.colorCode,
     ราคามาตรฐาน: s.price,
     ค่าแม่สี: s.tintPrice,
