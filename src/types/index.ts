@@ -138,6 +138,9 @@ export interface AppSettings {
   gallonIncentives?: Record<string, GallonIncentiveRule[]>;
   orderByName?: string;
   brandConfig?: BrandConfig;
+  /** Saved configuration per brand; the active profile is selected by activeBrandKey. */
+  brandProfiles?: Record<string, BrandProfile>;
+  activeBrandKey?: string;
 }
 
 
@@ -208,14 +211,19 @@ export interface CommissionPerHeadTier {
   amt: number;
 }
 
-export interface CommissionConfig {
-  brandName: string;
-  shortName: string;
-  monthlyTarget: number;
-  commissionMainTable: CommissionTier[];
-  commissionSpecialTable: CommissionTier[];
-  commissionPerHeadTable: CommissionPerHeadTier[];
+export interface BrandProfile {
+  key: string;
+  brandConfig: BrandConfig;
+  /** Optional short code for future brand-specific reports/Sheets. */
+  shortName?: string;
+  /** Default target reference retained from the original multi-brand design. */
+  monthlyTarget?: number;
+  /** Whether a new brand should start from the seeded catalog or an empty catalog. */
   initialCatalogChoice?: 'seed' | 'empty';
+  targets: Record<string, number>;
+  headcounts?: Record<string, number>;
+  commissionTiers?: CommissionTierRule[];
+  gallonIncentives?: Record<string, GallonIncentiveRule[]>;
   updatedAt?: string;
 }
 
