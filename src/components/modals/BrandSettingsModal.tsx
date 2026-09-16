@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Palette, Check, Store, Building, Sparkles, Image, RefreshCw } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
-import { BrandConfig } from '../../types';
+import { BrandConfig, BrandProfile } from '../../types';
 
 interface BrandSettingsModalProps {
   isOpen: boolean;
@@ -9,48 +9,15 @@ interface BrandSettingsModalProps {
 }
 
 const PRESET_BRANDS = [
-  {
-    name: 'Sale Paint Pro',
-    subTitle: 'ระบบบริหารงานขายสีและสต็อกมืออาชีพ',
-    themeColor: 'blue' as const,
-    badgeText: 'PRO',
-  },
-  {
-    name: 'NIPPON SALE',
-    subTitle: 'ระบบบริหารงานขายสีนิปปอนเพนต์',
-    themeColor: 'red' as const,
-    badgeText: 'PRO',
-  },
-  {
-    name: 'TOA SALE',
-    subTitle: 'ระบบบริหารงานขายสีทีโอเอ',
-    themeColor: 'emerald' as const,
-    badgeText: 'PRO',
-  },
-  {
-    name: 'JOTUN SALE',
-    subTitle: 'ระบบบริหารงานขายสีโจตัน',
-    themeColor: 'blue' as const,
-    badgeText: 'PRO',
-  },
-  {
-    name: 'DULUX SALE',
-    subTitle: 'ระบบบริหารงานขายสีดูลักซ์',
-    themeColor: 'violet' as const,
-    badgeText: 'PRO',
-  },
-  {
-    name: 'BEGER SALE',
-    subTitle: 'ระบบบริหารงานขายสีเบเยอร์',
-    themeColor: 'amber' as const,
-    badgeText: 'PRO',
-  },
-  {
-    name: 'CAPTAIN SALE',
-    subTitle: 'ระบบบริหารงานขายสีกัปตัน',
-    themeColor: 'teal' as const,
-    badgeText: 'PRO',
-  },
+  { key: 'SALE_PAINT_PRO', name: 'Sale Paint Pro', subTitle: 'ระบบบริหารงานขายสีและสต็อกมืออาชีพ', themeColor: 'blue' as const, badgeText: 'PRO' },
+  { key: 'NIPPON', name: 'NIPPON SALE', subTitle: 'ระบบบริหารงานขายสีนิปปอนเพนต์', themeColor: 'red' as const, badgeText: 'PRO' },
+  { key: 'TOA', name: 'TOA SALE', subTitle: 'ระบบบริหารงานขายสีทีโอเอ', themeColor: 'emerald' as const, badgeText: 'PRO' },
+  { key: 'JOTUN', name: 'JOTUN SALE', subTitle: 'ระบบบริหารงานขายสีโจตัน', themeColor: 'blue' as const, badgeText: 'PRO' },
+  { key: 'DULUX', name: 'DULUX SALE', subTitle: 'ระบบบริหารงานขายสีดูลักซ์', themeColor: 'violet' as const, badgeText: 'PRO' },
+  { key: 'BEGER', name: 'BEGER SALE', subTitle: 'ระบบบริหารงานขายสีเบเยอร์', themeColor: 'amber' as const, badgeText: 'PRO' },
+  { key: 'CAPTAIN', name: 'CAPTAIN SALE', subTitle: 'ระบบบริหารงานขายสีกัปตัน', themeColor: 'teal' as const, badgeText: 'PRO' },
+  { key: 'DELTA', name: 'DELTA SALE', subTitle: 'ระบบบริหารงานขายสีเดลต้า', themeColor: 'slate' as const, badgeText: 'PRO' },
+  { key: 'JBP', name: 'JBP SALE', subTitle: 'ระบบบริหารงานขายสี JBP', themeColor: 'violet' as const, badgeText: 'PRO' },
 ];
 
 const THEME_OPTIONS = [
@@ -75,11 +42,15 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
   const [badgeText, setBadgeText] = useState<string>('PRO');
   const [themeColor, setThemeColor] = useState<'red' | 'blue' | 'emerald' | 'violet' | 'amber' | 'teal' | 'slate'>('blue');
   const [logoImageUrl, setLogoImageUrl] = useState<string>('');
+  const [selectedBrandKey, setSelectedBrandKey] = useState<string>('SALE_PAINT_PRO');
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
-      const cfg = settings.brandConfig;
+      const activeKey = settings.activeBrandKey || 'SALE_PAINT_PRO';
+      const profile = settings.brandProfiles?.[activeKey];
+      const cfg = profile?.brandConfig || settings.brandConfig;
+      setSelectedBrandKey(activeKey);
       if (cfg) {
         setBrandName(cfg.brandName || 'Sale Paint Pro');
         setSubTitle(cfg.subTitle || 'ระบบบริหารงานขายสีและสต็อก');
@@ -88,7 +59,6 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
         setThemeColor(cfg.themeColor || 'blue');
         setLogoImageUrl(cfg.logoImageUrl || '');
       } else {
-        // Defaults to Nippon or generic Sale Paint Pro
         setBrandName('Sale Paint Pro');
         setSubTitle('ระบบบริหารงานขายสีและสต็อก');
         setBranchName('สาขาเลย (Loei Branch)');
@@ -100,17 +70,37 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
     }
   }, [isOpen, settings]);
 
-  if (!isOpen) return null;
 
-  const handleApplyPreset = (preset: typeof PRESET_BRANDS[0]) => {
+  const handleApplyPreset = (preset: typeof PRESET_BRANDS[number]) => {
+    setSelectedBrandKey(preset.key);
+    const existing = settings.brandProfiles?.[preset.key];
+    if (existing) {
+      const cfg = existing.brandConfig;
+      setBrandName(cfg.brandName || preset.name);
+      setSubTitle(cfg.subTitle || preset.subTitle);
+      setBranchName(cfg.branchName || settings.brandConfig?.branchName || 'สาขาเลย (Loei Branch)');
+      setBadgeText(cfg.badgeText || preset.badgeText);
+      setThemeColor(cfg.themeColor || preset.themeColor);
+      setLogoImageUrl(cfg.logoImageUrl || '');
+      return;
+    }
+
+    // New brand profiles start from the current sales/commission configuration.
+    // Nothing is invented for pricing or commission; those remain editable through the existing modals.
     setBrandName(preset.name);
     setSubTitle(preset.subTitle);
     setThemeColor(preset.themeColor);
     setBadgeText(preset.badgeText);
+    setLogoImageUrl('');
   };
+
+
+  if (!isOpen) return null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const key = selectedBrandKey || brandName.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_') || 'SALE_PAINT_PRO';
     const updatedBrandConfig: BrandConfig = {
       brandName: brandName.trim() || 'Sale Paint Pro',
       subTitle: subTitle.trim() || 'ระบบบริหารงานขายสีและสต็อก',
@@ -120,8 +110,32 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
       logoImageUrl: logoImageUrl.trim() || undefined,
     };
 
+    const existingProfile = settings.brandProfiles?.[key];
+    const updatedProfile: BrandProfile = {
+      key,
+      brandConfig: updatedBrandConfig,
+      targets: { ...(existingProfile?.targets || settings.targets || {}) },
+      headcounts: { ...(existingProfile?.headcounts || settings.headcounts || {}) },
+      commissionTiers: existingProfile?.commissionTiers?.map((r) => ({ ...r })) || settings.commissionTiers?.map((r) => ({ ...r })),
+      gallonIncentives: Object.fromEntries(
+        Object.entries(existingProfile?.gallonIncentives || settings.gallonIncentives || {}).map(([month, rules]) => [month, rules.map((r) => ({ ...r }))])
+      ),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedProfiles: Record<string, BrandProfile> = {
+      ...(settings.brandProfiles || {}),
+      [key]: updatedProfile,
+    };
+
     await updateSettings({
       brandConfig: updatedBrandConfig,
+      activeBrandKey: key,
+      brandProfiles: updatedProfiles,
+      targets: { ...updatedProfile.targets },
+      headcounts: { ...(updatedProfile.headcounts || {}) },
+      commissionTiers: updatedProfile.commissionTiers,
+      gallonIncentives: { ...(updatedProfile.gallonIncentives || {}) },
     });
 
     setSavedSuccess(true);
@@ -131,6 +145,7 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
   };
 
   const handleResetToDefault = () => {
+    setSelectedBrandKey('SALE_PAINT_PRO');
     setBrandName('Sale Paint Pro');
     setSubTitle('ระบบบริหารงานขายสีและสต็อก');
     setBranchName('สาขาเลย (Loei Branch)');
@@ -225,7 +240,7 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
         {/* Quick Presets */}
         <div>
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-            เลือกแม่แบบแบรนด์ด่วน:
+            เลือก / สลับโปรไฟล์แบรนด์:
           </label>
           <div className="flex flex-wrap gap-2">
             {PRESET_BRANDS.map((b) => (
@@ -243,6 +258,7 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
               </button>
             ))}
           </div>
+          <p className="text-[11px] text-slate-400 mt-2">การสลับแบรนด์จะมีผลเมื่อกด “บันทึกการตั้งค่า” และแต่ละแบรนด์จะเก็บเป้า/คอมมิชชั่นของตัวเองไว้</p>
         </div>
 
         {/* Brand Customization Form */}
