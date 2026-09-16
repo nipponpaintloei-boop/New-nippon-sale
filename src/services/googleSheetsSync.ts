@@ -304,8 +304,17 @@ export async function pickGoogleSpreadsheet(): Promise<{
     return { success: false, error: 'กรุณาเชื่อมต่อ Google ก่อนเลือก Spreadsheet' };
   }
 
-  const apiKey = String((import.meta as any).env?.VITE_GOOGLE_API_KEY || '').trim();
-  const appId = String((import.meta as any).env?.VITE_GOOGLE_APP_ID || '').trim();
+  // Google Picker configuration.
+  // Environment variables can override these defaults for another deployment.
+  // The API key is intentionally restricted in Google Cloud to the Picker/Drive APIs.
+  const apiKey = String(
+    (import.meta as any).env?.VITE_GOOGLE_API_KEY ||
+      'AIzaSyDJwNEbcziKYgCOgdWouK0Rp1O1Yn9d5bA'
+  ).trim();
+  const appId = String(
+    (import.meta as any).env?.VITE_GOOGLE_APP_ID ||
+      '178790721803'
+  ).trim();
 
   if (!apiKey || !appId) {
     return {
