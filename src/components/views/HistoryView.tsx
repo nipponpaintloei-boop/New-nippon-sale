@@ -249,12 +249,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold">
-                <th className="py-3.5 px-4">วันที่</th>
                 <th className="py-3.5 px-4">สินค้า</th>
-                <th className="py-3.5 px-4">ขนาด/เบส/เฉด</th>
+                <th className="py-3.5 px-4">ฟิล์มสี</th>
+                <th className="py-3.5 px-4">ขนาด</th>
+                <th className="py-3.5 px-4">เบส</th>
+                <th className="py-3.5 px-4">เบอร์สี / รหัสสี</th>
                 <th className="py-3.5 px-4 text-center">จำนวน</th>
                 <th className="py-3.5 px-4 text-right">ยอดรวม</th>
-                <th className="py-3.5 px-4">ลูกค้า</th>
                 <th className="py-3.5 px-4 text-right">จัดการ</th>
               </tr>
             </thead>
@@ -262,29 +263,19 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               {filteredSales.length > 0 ? (
                 filteredSales.map((s, idx) => (
                   <tr key={s.id ? `hist-${s.id}-${idx}` : `hist-idx-${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 px-4 font-mono text-slate-500 whitespace-nowrap">{s.date}</td>
-                    <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white max-w-[200px] truncate">
+                    <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white max-w-[220px] truncate">
                       {s.name}
                       {s.sku && <span className="block text-[10px] text-slate-400 font-mono">{s.sku}</span>}
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500">
-                      {[s.size, s.base, s.filmColor, s.colorCode].filter(Boolean).join(' ') || '-'}
-                    </td>
+                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">{s.filmColor || '-'}</td>
+                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">{s.size || '-'}</td>
+                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">{s.base || '-'}</td>
+                    <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">{s.colorCode || '-'}</td>
                     <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
                       {s.qty}
                     </td>
                     <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 dark:text-white">
                       {fmt(s.total)} บ.
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
-                      {s.customerName || s.customerPhone ? (
-                        <div className="flex items-center gap-1.5 truncate max-w-[150px]">
-                          <User className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                          <span className="truncate">{s.customerName || s.customerPhone}</span>
-                        </div>
-                      ) : (
-                        '-'
-                      )}
                     </td>
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
@@ -308,7 +299,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-slate-400">
+                  <td colSpan={8} className="text-center py-16 text-slate-400">
                     ไม่พบข้อมูลรายการขายที่ตรงตามเงื่อนไข
                   </td>
                 </tr>

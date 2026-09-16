@@ -462,9 +462,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
-                    <th className="pb-3 px-2">วันที่</th>
                     <th className="pb-3 px-2">สินค้า</th>
-                    <th className="pb-3 px-2">รายละเอียด</th>
+                    <th className="pb-3 px-2">ฟิล์มสี</th>
+                    <th className="pb-3 px-2">ขนาด</th>
+                    <th className="pb-3 px-2">เบส</th>
+                    <th className="pb-3 px-2">เบอร์สี / รหัสสี</th>
                     <th className="pb-3 px-2 text-center">จำนวน</th>
                     <th className="pb-3 px-2 text-right">ยอดรวม</th>
                   </tr>
@@ -476,15 +478,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       onClick={() => onOpenSaleDetail && onOpenSaleDetail(s)}
                       className="hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors group"
                     >
-                      <td className="py-3 px-2 text-slate-500 font-mono text-[11px] whitespace-nowrap">
-                        {s.date}
-                      </td>
-                      <td className="py-3 px-2 text-slate-900 dark:text-slate-100 font-bold max-w-[170px] truncate group-hover:text-red-600 transition-colors">
+                      <td className="py-3 px-2 text-slate-900 dark:text-slate-100 font-bold max-w-[180px] truncate group-hover:text-red-600 transition-colors">
                         {s.name}
                       </td>
-                      <td className="py-3 px-2 text-slate-500 text-[11px]">
-                        {[s.size, s.base, s.filmColor, s.colorCode].filter(Boolean).join(' ') || '-'}
-                      </td>
+                      <td className="py-3 px-2 text-slate-500 text-[11px] whitespace-nowrap">{s.filmColor || '-'}</td>
+                      <td className="py-3 px-2 text-slate-500 text-[11px] whitespace-nowrap">{s.size || '-'}</td>
+                      <td className="py-3 px-2 text-slate-500 text-[11px] whitespace-nowrap">{s.base || '-'}</td>
+                      <td className="py-3 px-2 text-slate-500 text-[11px] whitespace-nowrap">{s.colorCode || '-'}</td>
                       <td className="py-3 px-2 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
                         {s.qty}
                       </td>

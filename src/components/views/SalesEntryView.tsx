@@ -736,6 +736,10 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 text-[11px]">
                     <th className="pb-2">สินค้า</th>
+                    <th className="pb-2">ฟิล์มสี</th>
+                    <th className="pb-2">ขนาด</th>
+                    <th className="pb-2">เบส</th>
+                    <th className="pb-2">เบอร์สี / รหัสสี</th>
                     <th className="pb-2 text-center">จำนวน</th>
                     <th className="pb-2 text-right">ยอดรวม</th>
                     <th className="pb-2 text-right">จัดการ</th>
@@ -745,14 +749,15 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
                   {todaySales.length > 0 ? (
                     todaySales.map((s, idx) => (
                       <tr key={s.id ? `sale-${s.id}-${idx}` : `sale-idx-${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="py-2.5 max-w-[140px] truncate">
+                        <td className="py-2.5 max-w-[180px] truncate">
                           <div className="font-bold text-slate-900 dark:text-slate-100 truncate">
                             {s.name}
                           </div>
-                          <div className="text-[10px] text-slate-400 truncate">
-                            {[s.size, s.base, s.colorCode].filter(Boolean).join(' ')}
-                          </div>
                         </td>
+                        <td className="py-2.5 text-slate-500 whitespace-nowrap">{s.filmColor || '-'}</td>
+                        <td className="py-2.5 text-slate-500 whitespace-nowrap">{s.size || '-'}</td>
+                        <td className="py-2.5 text-slate-500 whitespace-nowrap">{s.base || '-'}</td>
+                        <td className="py-2.5 text-slate-500 whitespace-nowrap">{s.colorCode || '-'}</td>
                         <td className="py-2.5 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
                           {s.qty}
                         </td>
