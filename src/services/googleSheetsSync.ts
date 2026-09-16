@@ -262,6 +262,118 @@ export async function loadGsiScript(): Promise<boolean> {
 }
 
 /**
+ * Ensures the Google API JS client is loaded for Google Picker.
+ */
+async function loadGoogleApiScript(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  if ((window as any).gapi?.load) return true;
+
+  return new Promise((resolve) => {
+    const existing = document.querySelector('script[src*="apis.google.com/js/api.js"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(!!(window as any).gapi?.load));
+      existing.addEventListener('error', () => resolve(false));
+      setTimeout(() => resolve(!!(window as any).gapi?.load), 1500);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://apis.google.com/js/api.js';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(!!(window as any).gapi?.load);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Opens the Google Drive Picker restricted to Google Sheets.
+ * The selected file ID/name are returned so the existing Sheets sync flow can
+ * continue using the same spreadsheetId storage and verification logic.
+ */
+export async function pickGoogleSpreadsheet(): Promise<{
+  success: boolean;
+  spreadsheetId?: string;
+  spreadsheetName?: string;
+  spreadsheetUrl?: string;
+  error?: string;
+}> {
+  const token = await getValidAccessToken();
+  if (!token) {
+    return { success: false, error: 'กรุณาเชื่อมต่อ Google ก่อนเลือก Spreadsheet' };
+  }
+
+  const apiKey = String((import.meta as any).env?.VITE_GOOGLE_API_KEY || '').trim();
+  const appId = String((import.meta as any).env?.VITE_GOOGLE_APP_ID || '').trim();
+
+  if (!apiKey || !appId) {
+    return {
+      success: false,
+      error: 'ยังไม่ได้ตั้งค่า Google Picker API Key / App ID ในระบบ (VITE_GOOGLE_API_KEY และ VITE_GOOGLE_APP_ID)',
+    };
+  }
+
+  const apiLoaded = await loadGoogleApiScript();
+  if (!apiLoaded) {
+    return { success: false, error: 'ไม่สามารถโหลด Google API Client ได้ กรุณาลองใหม่อีกครั้ง' };
+  }
+
+  return new Promise((resolve) => {
+    try {
+      (window as any).gapi.load('picker', () => {
+        const googleApi = (window as any).google;
+        const pickerApi = googleApi?.picker;
+
+        if (!pickerApi?.PickerBuilder) {
+          resolve({ success: false, error: 'ไม่สามารถโหลด Google Picker ได้ กรุณาลองใหม่อีกครั้ง' });
+          return;
+        }
+
+        const view = new pickerApi.DocsView(pickerApi.ViewId.SPREADSHEETS)
+          .setIncludeFolders(false)
+          .setSelectFolderEnabled(false);
+
+        const picker = new pickerApi.PickerBuilder()
+          .addView(view)
+          .setOAuthToken(token)
+          .setDeveloperKey(apiKey)
+          .setAppId(appId)
+          .setOrigin(window.location.origin)
+          .setCallback((data: any) => {
+            if (data.action === pickerApi.Action.PICKED) {
+              const doc = data.docs?.[0];
+              const id = doc?.[pickerApi.Document.ID] || doc?.id;
+              const name = doc?.[pickerApi.Document.NAME] || doc?.name || 'Google Spreadsheet';
+              const url = doc?.[pickerApi.Document.URL] || doc?.url || `https://docs.google.com/spreadsheets/d/${id}/edit`;
+
+              if (!id) {
+                resolve({ success: false, error: 'ไม่พบ Spreadsheet ID จากไฟล์ที่เลือก' });
+                return;
+              }
+
+              resolve({
+                success: true,
+                spreadsheetId: id,
+                spreadsheetName: name,
+                spreadsheetUrl: url,
+              });
+            } else if (data.action === pickerApi.Action.CANCEL) {
+              resolve({ success: false, error: 'ยกเลิกการเลือก Spreadsheet' });
+            }
+          })
+          .build();
+
+        picker.setVisible(true);
+      });
+    } catch (err: any) {
+      console.error('Google Picker error:', err);
+      resolve({ success: false, error: err?.message || 'ไม่สามารถเปิดตัวเลือก Google Sheets ได้' });
+    }
+  });
+}
+
+/**
  * Fetches Google User Profile using Access Token
  */
 export async function fetchGoogleUserProfile(accessToken: string): Promise<{
@@ -311,7 +423,7 @@ export async function loginWithGoogleSheets(clientId: string): Promise<{
     try {
       gisTokenClient = (window as any).google.accounts.oauth2.initTokenClient({
         client_id: clientId.trim(),
-        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
         prompt: 'consent',
         callback: async (response: any) => {
           if (response.error) {
@@ -392,7 +504,7 @@ async function trySilentTokenRefresh(clientId: string): Promise<boolean> {
       const silentClient = (window as any).google.accounts.oauth2.initTokenClient({
         client_id: clientId.trim(),
         // Keep this scope identical to the Sheets API permission requested at login.
-        scope: 'https://www.googleapis.com/auth/spreadsheets',
+        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
         prompt: 'none',
         callback: (response: any) => {
           if (response && response.access_token) {
@@ -709,7 +821,6 @@ export async function syncToGoogleSheets(
       'สินค้า',
       'ขนาด',
       'เบส',
-      'ฟิล์มสี',
       'รหัสสี',
       'ราคาตั้ง',
       'ค่าแม่สี',
@@ -725,7 +836,6 @@ export async function syncToGoogleSheets(
       s.name || '',
       s.size || '',
       s.base || '',
-      s.filmColor || '',
       s.colorCode || '',
       Number(s.price) || 0,
       Number(s.tintPrice) || 0,
