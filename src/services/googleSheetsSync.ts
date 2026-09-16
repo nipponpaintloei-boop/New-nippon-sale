@@ -45,6 +45,10 @@ let needsReconnectFlag = false;
 let gisTokenClient: any = null;
 let debounceTimer: any = null;
 let hasShownSuccessToastInSession = false;
+let silentRefreshPromise: Promise<boolean> | null = null;
+let autoRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+const AUTO_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+const MIN_AUTO_REFRESH_DELAY_MS = 30 * 1000;
 
 // Toast event subscribers
 type ToastListener = (toast: SyncToastEvent) => void;
@@ -82,6 +86,11 @@ try {
   }
 } catch {
   // Ignore storage errors
+}
+
+// Schedule renewal when a valid token was restored from the current browser session.
+if (inMemoryAccessToken) {
+  scheduleAutoRefresh();
 }
 
 export function getGoogleSheetsConfig(): GoogleSheetsConfig {
@@ -148,9 +157,40 @@ export function saveGoogleSheetsConfig(patch: Partial<GoogleSheetsConfig>): void
   }
 }
 
+function clearAutoRefreshTimer(): void {
+  if (autoRefreshTimer) {
+    clearTimeout(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+
+function scheduleAutoRefresh(): void {
+  clearAutoRefreshTimer();
+
+  if (!inMemoryAccessToken || !inMemoryTokenExpiresAt) return;
+
+  const config = getGoogleSheetsConfig();
+  if (!config.clientId) return;
+
+  // Refresh a few minutes before expiry so normal API calls never have to wait
+  // for the token renewal. This is best-effort and does not open a popup.
+  const delay = Math.max(
+    MIN_AUTO_REFRESH_DELAY_MS,
+    inMemoryTokenExpiresAt - Date.now() - AUTO_REFRESH_BUFFER_MS
+  );
+
+  autoRefreshTimer = setTimeout(() => {
+    autoRefreshTimer = null;
+    void refreshGoogleTokenSilently();
+  }, delay);
+}
+
 export function setAccessToken(token: string, expiresInSec: number): void {
   inMemoryAccessToken = token;
-  inMemoryTokenExpiresAt = Date.now() + (expiresInSec - 60) * 1000; // 60s buffer
+  // Keep a small safety margin because Google API calls can start just before
+  // the exact expiry time. Never allow a negative/zero expiry window.
+  const safeExpiresInSec = Math.max(60, Number(expiresInSec) || 3599);
+  inMemoryTokenExpiresAt = Date.now() + Math.max(60, safeExpiresInSec - 60) * 1000;
   needsReconnectFlag = false;
 
   try {
@@ -159,9 +199,12 @@ export function setAccessToken(token: string, expiresInSec: number): void {
   } catch {
     // Ignore
   }
+
+  scheduleAutoRefresh();
 }
 
 export function clearAccessToken(): void {
+  clearAutoRefreshTimer();
   inMemoryAccessToken = null;
   inMemoryTokenExpiresAt = 0;
   needsReconnectFlag = true;
@@ -338,29 +381,55 @@ async function trySilentTokenRefresh(clientId: string): Promise<boolean> {
   if (!loaded || !(window as any).google?.accounts?.oauth2) return false;
 
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
     try {
       const silentClient = (window as any).google.accounts.oauth2.initTokenClient({
         client_id: clientId.trim(),
+        // Keep this scope identical to the Sheets API permission requested at login.
         scope: 'https://www.googleapis.com/auth/spreadsheets',
         prompt: 'none',
         callback: (response: any) => {
           if (response && response.access_token) {
             const expiresIn = Number(response.expires_in) || 3599;
             setAccessToken(response.access_token, expiresIn);
-            resolve(true);
+            finish(true);
           } else {
-            resolve(false);
+            finish(false);
           }
         },
-        error_callback: () => {
-          resolve(false);
+        error_callback: (err: any) => {
+          // Silent renewal is intentionally quiet. If Google cannot renew without
+          // user interaction, the caller will mark the connection as needing login.
+          console.warn('Silent Google token refresh unavailable:', err?.type || err?.error || 'unknown');
+          finish(false);
         },
       });
       silentClient.requestAccessToken({ prompt: 'none' });
-    } catch {
-      resolve(false);
+    } catch (err) {
+      console.warn('Silent Google token refresh failed:', err);
+      finish(false);
     }
   });
+}
+
+async function refreshGoogleTokenSilently(): Promise<boolean> {
+  if (silentRefreshPromise) return silentRefreshPromise;
+
+  const config = getGoogleSheetsConfig();
+  if (!config.clientId) return false;
+
+  silentRefreshPromise = trySilentTokenRefresh(config.clientId)
+    .finally(() => {
+      silentRefreshPromise = null;
+    });
+
+  return silentRefreshPromise;
 }
 
 /**
@@ -375,8 +444,9 @@ export async function getValidAccessToken(): Promise<string | null> {
     return inMemoryAccessToken;
   }
 
-  // Token is expired or expiring soon, try silent refresh
-  const refreshed = await trySilentTokenRefresh(config.clientId);
+  // Token is expired or expiring soon, try silent refresh. A shared promise
+  // prevents several simultaneous API calls from opening multiple GIS requests.
+  const refreshed = await refreshGoogleTokenSilently();
   if (refreshed && inMemoryAccessToken) {
     return inMemoryAccessToken;
   }
@@ -384,6 +454,37 @@ export async function getValidAccessToken(): Promise<string | null> {
   // Silent refresh failed, mark reconnection required
   needsReconnectFlag = true;
   return null;
+}
+
+/**
+ * Re-check the token whenever the app becomes active again. Mobile browsers
+ * frequently suspend timers while a tab is backgrounded, so this complements
+ * the scheduled refresh above.
+ */
+export function initializeGoogleTokenAutoRefresh(): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  const refreshIfNeeded = () => {
+    const config = getGoogleSheetsConfig();
+    if (!config.clientId || !inMemoryAccessToken) return;
+
+    const remaining = inMemoryTokenExpiresAt - Date.now();
+    if (remaining <= AUTO_REFRESH_BUFFER_MS) {
+      void refreshGoogleTokenSilently();
+    } else {
+      scheduleAutoRefresh();
+    }
+  };
+
+  window.addEventListener('focus', refreshIfNeeded);
+  document.addEventListener('visibilitychange', refreshIfNeeded);
+  refreshIfNeeded();
+
+  return () => {
+    window.removeEventListener('focus', refreshIfNeeded);
+    document.removeEventListener('visibilitychange', refreshIfNeeded);
+    clearAutoRefreshTimer();
+  };
 }
 
 /**
@@ -776,4 +877,10 @@ export function disconnectGoogleSheets(): void {
     lastSyncStatus: 'idle',
     lastSyncTime: undefined,
   });
+}
+
+// Start token lifecycle handling as soon as this service is loaded.
+// No popup is opened; renewal uses GIS prompt:'none' only.
+if (typeof window !== 'undefined') {
+  initializeGoogleTokenAutoRefresh();
 }
