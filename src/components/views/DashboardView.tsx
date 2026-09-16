@@ -483,7 +483,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {s.name}
                       </td>
                       <td className="py-3 px-2 text-slate-500 text-[11px]">
-                        {[s.size, s.base, s.colorCode].filter(Boolean).join(' ') || '-'}
+                        {[s.size, s.base, s.filmColor, s.colorCode].filter(Boolean).join(' ') || '-'}
                       </td>
                       <td className="py-3 px-2 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
                         {s.qty}
