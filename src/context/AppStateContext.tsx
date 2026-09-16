@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { User } from '@supabase/supabase-js';
+import { AppUser, checkSession, getSavedGoogleProfile, GoogleUserProfile, saveGoogleProfile, clearGoogleProfile } from '../services/auth';
 import {
   AppSettings,
-  BrandProfile,
   CustomerMeta,
   GallonIncentiveRule,
   MksDayData,
@@ -24,8 +23,6 @@ import {
   storageSet,
   upsertSalesRows,
 } from '../services/storage';
-import { getSupabaseClient, USE_CLOUD_SYNC } from '../config/supabase';
-import { checkSession, getSavedGoogleProfile, GoogleUserProfile, saveGoogleProfile, clearGoogleProfile } from '../services/auth';
 import { todayISO } from '../services/calculations';
 import { recomputeStock } from '../services/stockService';
 import { addAuditItem } from '../services/auditService';
@@ -40,8 +37,8 @@ interface AppStateContextType {
   customersMeta: Record<string, CustomerMeta>;
   activeMonth: string;
   setActiveMonth: (m: string) => void;
-  currentUser: User | null;
-  setCurrentUser: (u: User | null) => void;
+  currentUser: AppUser | null;
+  setCurrentUser: (u: AppUser | null) => void;
   googleProfile: GoogleUserProfile | null;
   setGoogleProfile: (p: GoogleUserProfile | null) => void;
   isLoading: boolean;
@@ -121,44 +118,6 @@ function seedSales(): SaleEntry[] {
   }));
 }
 
-function normalizeBrandKey(value: string | undefined): string {
-  const key = String(value || 'SALE_PAINT_PRO')
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return key || 'SALE_PAINT_PRO';
-}
-
-function buildInitialBrandProfiles(settings: AppSettings): { activeBrandKey: string; brandProfiles: Record<string, BrandProfile> } {
-  const activeBrandKey = normalizeBrandKey(settings.activeBrandKey || settings.brandConfig?.brandName);
-  if (settings.brandProfiles && Object.keys(settings.brandProfiles).length > 0) {
-    return { activeBrandKey, brandProfiles: settings.brandProfiles };
-  }
-
-  const profile: BrandProfile = {
-    key: activeBrandKey,
-    brandConfig: settings.brandConfig || {
-      brandName: 'Sale Paint Pro',
-      subTitle: 'ระบบบริหารงานขายสีและสต็อก',
-      branchName: 'สาขาเลย (Loei Branch)',
-      themeColor: 'blue',
-      badgeText: 'PRO',
-    },
-    shortName: settings.brandConfig?.brandName?.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_'),
-    monthlyTarget: Object.values(settings.targets || {})[0] || undefined,
-    targets: { ...(settings.targets || {}) },
-    headcounts: { ...(settings.headcounts || {}) },
-    commissionTiers: settings.commissionTiers ? settings.commissionTiers.map((r) => ({ ...r })) : undefined,
-    gallonIncentives: Object.fromEntries(
-      Object.entries(settings.gallonIncentives || {}).map(([month, rules]) => [month, rules.map((r) => ({ ...r }))])
-    ),
-    updatedAt: new Date().toISOString(),
-  };
-
-  return { activeBrandKey, brandProfiles: { [activeBrandKey]: profile } };
-}
-
 export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<SaleEntry[]>([]);
@@ -166,21 +125,12 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     targets: { ...TARGETS_SEED },
     headcounts: {},
     gallonIncentives: {},
-    brandConfig: {
-      brandName: 'Sale Paint Pro',
-      subTitle: 'ระบบบริหารงานขายสีและสต็อก',
-      branchName: 'สาขาเลย (Loei Branch)',
-      themeColor: 'blue',
-      badgeText: 'PRO',
-    },
-    activeBrandKey: 'SALE_PAINT_PRO',
-    brandProfiles: {},
   });
   const [mksDayHistory, setMksDayHistory] = useState<Record<string, MksDayData>>({});
   const [mksWeekHistory, setMksWeekHistory] = useState<Record<string, MksWeekData>>({});
   const [customersMeta, setCustomersMeta] = useState<Record<string, CustomerMeta>>({});
   const [activeMonth, setActiveMonth] = useState<string>(todayISO().slice(0, 7));
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [googleProfile, setGoogleProfile] = useState<GoogleUserProfile | null>(getSavedGoogleProfile());
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -189,11 +139,23 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setIsLoading(true);
     try {
       // 1. Auth check
-      const { user } = await checkSession();
+      const { user, session } = await checkSession();
       setCurrentUser(user);
-      const savedGProfile = getSavedGoogleProfile();
-      if (savedGProfile) {
-        setGoogleProfile(savedGProfile);
+      if (session) {
+        setGoogleProfile(session);
+      }
+
+      // Do not load application data until a Google account has authenticated.
+      // This prevents one person's local data from ever being shown to another
+      // person using the same browser/device.
+      if (!user) {
+        setProducts([]);
+        setSales([]);
+        setSettings({ targets: { ...TARGETS_SEED }, headcounts: {}, gallonIncentives: {} });
+        setMksDayHistory({});
+        setMksWeekHistory({});
+        setCustomersMeta({});
+        return;
       }
 
       // 2. Settings
@@ -219,18 +181,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!parsedSettings.targets) parsedSettings.targets = { ...TARGETS_SEED };
       if (!parsedSettings.headcounts) parsedSettings.headcounts = {};
       if (!parsedSettings.gallonIncentives) parsedSettings.gallonIncentives = {};
-
-      // Backward-compatible migration: keep the existing settings intact while creating
-      // the first brand profile. Existing apps therefore become multi-brand capable without
-      // losing the current brand, targets, or commission rules.
-      const migratedBrands = buildInitialBrandProfiles(parsedSettings);
-      parsedSettings = {
-        ...parsedSettings,
-        activeBrandKey: migratedBrands.activeBrandKey,
-        brandProfiles: migratedBrands.brandProfiles,
-      };
       setSettings(parsedSettings);
-      await storageSet(STORE_KEYS.settings, JSON.stringify(parsedSettings));
 
       // 3. Sales
       let loadedSales: SaleEntry[] = [];
@@ -311,79 +262,6 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadInitialData();
   }, [loadInitialData]);
 
-  // Realtime subscription setup
-  useEffect(() => {
-    if (!USE_CLOUD_SYNC) return;
-    const client = getSupabaseClient();
-    if (!client) return;
-    const channel = client
-      .channel('app_data-sync')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_data' },
-        async (payload: any) => {
-          const key = payload.new?.key || payload.old?.key;
-          if (!key || key === STORE_KEYS.sales) return;
-          const snap = await storageGet(key);
-          if (!snap?.value) return;
-          try {
-            const data = JSON.parse(snap.value);
-            if (key === STORE_KEYS.products) setProducts(data);
-            else if (key === STORE_KEYS.settings) setSettings(data);
-            else if (key === STORE_KEYS.mksDay) setMksDayHistory(data);
-            else if (key === STORE_KEYS.mksWeek) setMksWeekHistory(data);
-            else if (key === STORE_KEYS.customers) setCustomersMeta(data);
-          } catch (e) {}
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'sales_entries' },
-        (payload: any) => {
-          if (payload.eventType === 'DELETE') {
-            const deletedId = payload.old?.id;
-            if (deletedId) {
-              setSales((prev) => prev.filter((s) => String(s.id) !== String(deletedId)));
-            }
-          } else if (payload.new) {
-            const newRow = payload.new;
-            const updatedEntry: SaleEntry = {
-              id: String(newRow.id),
-              date: newRow.date,
-              name: newRow.name,
-              size: newRow.size || '',
-              base: newRow.base || '',
-              price: Number(newRow.price) || 0,
-              colorCode: newRow.color_code || '',
-              tintPrice: Number(newRow.tint_price) || 0,
-              qty: Number(newRow.qty) || 0,
-              total: Number(newRow.total) || 0,
-              sku: newRow.sku || '',
-              seed: !!newRow.seed,
-              billId: newRow.bill_id || null,
-              customerName: newRow.customer_name || '',
-              customerPhone: newRow.customer_phone || '',
-            };
-            setSales((prev) => {
-              const idx = prev.findIndex((s) => String(s.id) === String(updatedEntry.id));
-              if (idx >= 0) {
-                const next = [...prev];
-                next[idx] = updatedEntry;
-                return next;
-              }
-              return [...prev, updatedEntry];
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      client.removeChannel(channel);
-    };
-  }, []);
-
-  // Actions
   const saveProducts = useCallback(
     async (newProds: Product[], actionDetail?: string) => {
       const computed = recomputeStock(newProds, sales);
@@ -461,42 +339,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateSettings = useCallback(
     async (patch: Partial<AppSettings>) => {
-      let updated: AppSettings = { ...settings, ...patch };
-
-      // Keep the active brand profile in sync whenever brand-specific settings change.
-      // This lets existing Target/Commission modals continue to use AppSettings while
-      // preserving their values separately for each selected brand.
-      const activeKey = normalizeBrandKey(updated.activeBrandKey || updated.brandConfig?.brandName);
-      const profiles = { ...(updated.brandProfiles || {}) };
-      const existing = profiles[activeKey];
-      if (updated.brandConfig) {
-        profiles[activeKey] = {
-          key: activeKey,
-          brandConfig: { ...updated.brandConfig },
-          shortName: existing?.shortName || activeKey,
-          monthlyTarget: Object.values(updated.targets || {})[0] || existing?.monthlyTarget,
-          targets: { ...(updated.targets || {}) },
-          headcounts: { ...(updated.headcounts || {}) },
-          commissionTiers: updated.commissionTiers?.map((r) => ({ ...r })),
-          gallonIncentives: Object.fromEntries(
-            Object.entries(updated.gallonIncentives || {}).map(([month, rules]) => [month, rules.map((r) => ({ ...r }))])
-          ),
-          updatedAt: new Date().toISOString(),
-        };
-      } else if (existing) {
-        profiles[activeKey] = {
-          ...existing,
-          targets: { ...(updated.targets || {}) },
-          headcounts: { ...(updated.headcounts || {}) },
-          commissionTiers: updated.commissionTiers?.map((r) => ({ ...r })),
-          gallonIncentives: Object.fromEntries(
-            Object.entries(updated.gallonIncentives || {}).map(([month, rules]) => [month, rules.map((r) => ({ ...r }))])
-          ),
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      updated = { ...updated, activeBrandKey: activeKey, brandProfiles: profiles };
-
+      const updated = { ...settings, ...patch };
       setSettings(updated);
       await storageSet(STORE_KEYS.settings, JSON.stringify(updated));
       return true;
@@ -1072,30 +915,10 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const resetAllData = useCallback(async () => {
     const sProds = seedProducts();
     const sSales = seedSales();
-    const defaultBrandConfig = {
-      brandName: 'Sale Paint Pro',
-      subTitle: 'ระบบบริหารงานขายสีและสต็อก',
-      branchName: 'สาขาเลย (Loei Branch)',
-      themeColor: 'blue' as const,
-      badgeText: 'PRO',
-    };
     const defaultSettings: AppSettings = {
       targets: { ...TARGETS_SEED },
       headcounts: {},
       gallonIncentives: {},
-      brandConfig: defaultBrandConfig,
-      activeBrandKey: 'SALE_PAINT_PRO',
-      brandProfiles: {},
-    };
-    defaultSettings.brandProfiles = {
-      SALE_PAINT_PRO: {
-        key: 'SALE_PAINT_PRO',
-        brandConfig: defaultBrandConfig,
-        targets: { ...TARGETS_SEED },
-        headcounts: {},
-        gallonIncentives: {},
-        updatedAt: new Date().toISOString(),
-      },
     };
     await clearSalesTable();
     await storageSet(STORE_KEYS.products, JSON.stringify(sProds));
@@ -1113,6 +936,33 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return true;
   }, []);
 
+  const handleSetCurrentUser = useCallback((u: AppUser | null) => {
+    setCurrentUser(u);
+    if (!u) {
+      setProducts([]);
+      setSales([]);
+      setSettings({ targets: { ...TARGETS_SEED }, headcounts: {}, gallonIncentives: {} });
+      setMksDayHistory({});
+      setMksWeekHistory({});
+      setCustomersMeta({});
+    }
+  }, []);
+
+  const handleSetGoogleProfile = useCallback((p: GoogleUserProfile | null) => {
+    setGoogleProfile(p);
+    if (p) {
+      saveGoogleProfile(p);
+      setCurrentUser({
+        id: p.sub || p.email.toLowerCase(),
+        email: p.email,
+        user_metadata: { full_name: p.name, name: p.name, picture: p.picture },
+      });
+    } else {
+      clearGoogleProfile();
+      handleSetCurrentUser(null);
+    }
+  }, [handleSetCurrentUser]);
+
   const value = useMemo(
     () => ({
       products,
@@ -1124,16 +974,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       activeMonth,
       setActiveMonth,
       currentUser,
-      setCurrentUser,
+      setCurrentUser: handleSetCurrentUser,
       googleProfile,
-      setGoogleProfile: (p: GoogleUserProfile | null) => {
-        setGoogleProfile(p);
-        if (p) {
-          saveGoogleProfile(p);
-        } else {
-          clearGoogleProfile();
-        }
-      },
+      setGoogleProfile: handleSetGoogleProfile,
       isLoading,
       saveProducts,
       addSalesEntries,
@@ -1177,6 +1020,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       currentUser,
       googleProfile,
       isLoading,
+      handleSetCurrentUser,
+      handleSetGoogleProfile,
       saveProducts,
       addSalesEntries,
       updateSaleEntry,
