@@ -14,6 +14,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
   isOpen,
   onClose,
   onOpenSheetsSetup,
+  onOpenBrandSetup,
 }) => {
   const {
     currentUser,
