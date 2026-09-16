@@ -587,7 +587,16 @@ export function initializeGoogleTokenAutoRefresh(): () => void {
 
   const refreshIfNeeded = () => {
     const config = getGoogleSheetsConfig();
-    if (!config.clientId || !inMemoryAccessToken) return;
+    if (!config.clientId) return;
+
+    // Access tokens are intentionally short-lived and sessionStorage is cleared
+    // when the browser session ends. Try a silent GIS token request on startup
+    // (and whenever the app becomes active) so an existing Google authorization
+    // can restore the connection without forcing the user to log in again.
+    if (!inMemoryAccessToken) {
+      void refreshGoogleTokenSilently();
+      return;
+    }
 
     const remaining = inMemoryTokenExpiresAt - Date.now();
     if (remaining <= AUTO_REFRESH_BUFFER_MS) {
