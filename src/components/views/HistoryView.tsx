@@ -268,7 +268,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       {s.sku && <span className="block text-[10px] text-slate-400 font-mono">{s.sku}</span>}
                     </td>
                     <td className="py-3.5 px-4 text-slate-500">
-                      {[s.size, s.base, s.colorCode].filter(Boolean).join(' ') || '-'}
+                      {[s.size, s.base, s.filmColor, s.colorCode].filter(Boolean).join(' ') || '-'}
                     </td>
                     <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
                       {s.qty}
