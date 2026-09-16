@@ -180,17 +180,26 @@ export function evaluateGallonRule(
       }
     }
 
-    // 2. Size Filter
+    // 2. Size Filter (new multi-select + legacy single-size support)
+    const selectedSizes = Array.isArray(rule.sizes) ? rule.sizes.filter(Boolean) : [];
     const rSize = (rule.size || '').trim();
-    if (rSize && rSize !== 'ALL' && rSize !== '__ALL__') {
-      const sSize = (s.size || '').trim();
-      if (!sSize.toLowerCase().includes(rSize.toLowerCase())) {
+    const sSize = (s.size || '').trim();
+    if (selectedSizes.length > 0) {
+      const normalizedSize = sSize.toLowerCase();
+      if (!selectedSizes.some((size) => normalizedSize.includes(String(size).trim().toLowerCase()))) {
         return false;
       }
+    } else if (rSize && rSize !== 'ALL' && rSize !== '__ALL__') {
+      if (!sSize.toLowerCase().includes(rSize.toLowerCase())) return false;
     }
 
-    // 3. Base Filter
-    if (rule.base && rule.base !== 'ALL' && rule.base !== '__ALL__') {
+    // 3. Base Filter (new include/exclude mode + legacy support)
+    const selectedBases = Array.isArray(rule.bases) ? rule.bases.filter(Boolean) : [];
+    if (rule.baseMode === 'include' && selectedBases.length > 0) {
+      if (!selectedBases.includes(s.base || '')) return false;
+    } else if (rule.baseMode === 'exclude' && selectedBases.length > 0) {
+      if (selectedBases.includes(s.base || '')) return false;
+    } else if (rule.base && rule.base !== 'ALL' && rule.base !== '__ALL__') {
       if (Array.isArray(rule.base)) {
         if (!rule.base.includes(s.base || '')) return false;
       } else if (rule.base !== s.base) {
