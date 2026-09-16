@@ -17,6 +17,7 @@ import {
   Layers,
   ChevronRight,
   Info,
+  Search,
 } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { GALLON_TIERS } from '../../data/constants';
@@ -26,6 +27,7 @@ import {
   RuleEvaluationResult,
 } from '../../types';
 import { evaluateGallonRule, fmt } from '../../services/calculations';
+import { buildProductIndexes } from '../../services/stockService';
 
 interface GallonRuleModalProps {
   isOpen: boolean;
@@ -39,17 +41,15 @@ export const GallonRuleModal: React.FC<GallonRuleModalProps> = ({ isOpen, onClos
     return sales.filter((s) => s.date.startsWith(activeMonth));
   }, [sales, activeMonth]);
 
-  // Unique product names for dropdown
+  // Product search uses the same indexed product-name matching approach as Sales Entry.
+  const indexes = useMemo(() => buildProductIndexes(products), [products]);
   const productOptions = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach((p) => {
-      if (p.name) set.add(p.name);
-    });
+    const names = new Set<string>(indexes.productNames);
     sales.forEach((s) => {
-      if (s.name) set.add(s.name);
+      if (s.name) names.add(s.name);
     });
-    return Array.from(set).sort();
-  }, [products, sales]);
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'th'));
+  }, [indexes.productNames, sales]);
 
   const initialRules: GallonIncentiveRule[] = useMemo(() => {
     if (settings?.gallonRules && settings.gallonRules.length > 0) {
@@ -65,16 +65,48 @@ export const GallonRuleModal: React.FC<GallonRuleModalProps> = ({ isOpen, onClos
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
 
-  // Form Fields
-  const [formName, setFormName] = useState<string>('');
+  // Product condition fields
   const [formProductName, setFormProductName] = useState<string>('');
-  const [formSize, setFormSize] = useState<string>('ALL');
+  const [formProductSearch, setFormProductSearch] = useState<string>('');
+  const [formSizes, setFormSizes] = useState<string[]>([]);
+  const [formBaseMode, setFormBaseMode] = useState<'all' | 'include' | 'exclude'>('all');
+  const [formBases, setFormBases] = useState<string[]>([]);
   const [formConditionType, setFormConditionType] = useState<IncentiveConditionType>('per_unit');
   const [formRatePerUnit, setFormRatePerUnit] = useState<number>(50);
   const [formBundleSize, setFormBundleSize] = useState<number>(4);
   const [formBundleReward, setFormBundleReward] = useState<number>(200);
   const [formMinRevenue, setFormMinRevenue] = useState<number>(200000);
   const [formMinQty, setFormMinQty] = useState<number>(4);
+
+  const availableSizes = useMemo(() => {
+    const values = new Set<string>();
+    products.forEach((p) => {
+      if (!formProductName || p.name === formProductName) if (p.size) values.add(p.size);
+    });
+    sales.forEach((sale) => {
+      if (!formProductName || sale.name === formProductName) if (sale.size) values.add(sale.size);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [products, sales, formProductName]);
+
+  const availableBases = useMemo(() => {
+    const values = new Set<string>();
+    products.forEach((p) => {
+      if ((!formProductName || p.name === formProductName) &&
+          (formSizes.length === 0 || formSizes.includes(p.size)) && p.base) values.add(p.base);
+    });
+    sales.forEach((sale) => {
+      if ((!formProductName || sale.name === formProductName) &&
+          (formSizes.length === 0 || formSizes.includes(sale.size)) && sale.base) values.add(sale.base);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, 'th'));
+  }, [products, sales, formProductName, formSizes]);
+
+  const productSuggestions = useMemo(() => {
+    const term = formProductSearch.trim().toLowerCase();
+    if (!term || formProductName) return [];
+    return productOptions.filter((name) => name.toLowerCase().includes(term)).slice(0, 10);
+  }, [formProductSearch, formProductName, productOptions]);
 
   // Split into custom and standard rules
   const customRules = rules.filter((r) => r.conditionType !== 'size_standard');
@@ -91,46 +123,26 @@ export const GallonRuleModal: React.FC<GallonRuleModalProps> = ({ isOpen, onClos
 
   // Open Form for New Rule
   const handleOpenNewForm = (presetType?: IncentiveConditionType) => {
-    const firstProd = productOptions[0] || 'สีน้ำทาภายนอก Nippon';
     setEditingRuleId(null);
-    setFormSize('ALL');
-    setFormProductName(firstProd);
+    setFormProductName('');
+    setFormProductSearch('');
+    setFormSizes([]);
+    setFormBaseMode('all');
+    setFormBases([]);
 
     if (presetType === 'bundle') {
       setFormConditionType('bundle');
-      setFormName(`${firstProd} ขายครบ 4 ถัง รับ 200 บ.`);
-      setFormBundleSize(4);
-      setFormBundleReward(200);
-      setFormRatePerUnit(50);
-      setFormMinRevenue(200000);
-      setFormMinQty(4);
+      setFormBundleSize(4); setFormBundleReward(200); setFormRatePerUnit(50); setFormMinRevenue(200000); setFormMinQty(4);
     } else if (presetType === 'revenue_threshold') {
       setFormConditionType('revenue_threshold');
-      setFormName(`${firstProd} ยอดขายถึง 200,000 บ. จ่ายถังละ 50 บ.`);
-      setFormMinRevenue(200000);
-      setFormRatePerUnit(50);
-      setFormBundleSize(4);
-      setFormBundleReward(200);
-      setFormMinQty(4);
+      setFormMinRevenue(200000); setFormRatePerUnit(50); setFormBundleSize(4); setFormBundleReward(200); setFormMinQty(4);
     } else if (presetType === 'min_qty_per_unit') {
       setFormConditionType('min_qty_per_unit');
-      setFormName(`${firstProd} ขายครบขั้นต่ำ 4 ถัง จ่ายถังละ 50 บ.`);
-      setFormMinQty(4);
-      setFormRatePerUnit(50);
-      setFormBundleSize(4);
-      setFormBundleReward(200);
-      setFormMinRevenue(200000);
+      setFormMinQty(4); setFormRatePerUnit(50); setFormBundleSize(4); setFormBundleReward(200); setFormMinRevenue(200000);
     } else {
-      // Default per_unit
       setFormConditionType('per_unit');
-      setFormName(`${firstProd} ค่ารายถัง 50 บ.`);
-      setFormRatePerUnit(50);
-      setFormBundleSize(4);
-      setFormBundleReward(200);
-      setFormMinRevenue(200000);
-      setFormMinQty(4);
+      setFormRatePerUnit(50); setFormBundleSize(4); setFormBundleReward(200); setFormMinRevenue(200000); setFormMinQty(4);
     }
-
     setIsFormOpen(true);
     setActiveTab('custom');
   };
@@ -138,9 +150,12 @@ export const GallonRuleModal: React.FC<GallonRuleModalProps> = ({ isOpen, onClos
   // Open Form for Editing Existing Rule
   const handleEditRule = (rule: GallonIncentiveRule) => {
     setEditingRuleId(rule.id || null);
-    setFormName(rule.name || rule.label || '');
     setFormProductName(rule.productName || '');
-    setFormSize(rule.size || 'ALL');
+    setFormProductSearch(rule.productName || '');
+    setFormSizes(rule.sizes?.length ? rule.sizes : (rule.size && rule.size !== 'ALL' ? [rule.size] : []));
+    const legacyBases = Array.isArray(rule.base) ? rule.base : (rule.base && rule.base !== 'ALL' && rule.base !== '__ALL__' ? [rule.base] : []);
+    setFormBaseMode(rule.baseMode || (legacyBases.length ? 'include' : 'all'));
+    setFormBases(rule.bases?.length ? rule.bases : legacyBases);
     setFormConditionType(rule.conditionType || 'per_unit');
     setFormRatePerUnit(rule.ratePerUnit ?? rule.rate ?? 50);
     setFormBundleSize(rule.bundleSize ?? 4);
@@ -150,41 +165,52 @@ export const GallonRuleModal: React.FC<GallonRuleModalProps> = ({ isOpen, onClos
     setIsFormOpen(true);
   };
 
+  const handleSelectProduct = (name: string) => {
+    setFormProductName(name);
+    setFormProductSearch(name);
+    setFormSizes([]);
+    setFormBaseMode('all');
+    setFormBases([]);
+  };
+
+  const toggleFormSize = (size: string) => {
+    setFormSizes((prev) => prev.includes(size) ? prev.filter((x) => x !== size) : [...prev, size]);
+  };
+
+  const toggleFormBase = (base: string) => {
+    setFormBases((prev) => prev.includes(base) ? prev.filter((x) => x !== base) : [...prev, base]);
+  };
+
   // Save Rule from Form
   const handleSaveForm = () => {
+    if (formBaseMode !== 'all' && formBases.length === 0) {
+      window.alert('กรุณาเลือก Base อย่างน้อย 1 รายการ หรือเลือก “ทุก Base”');
+      return;
+    }
+    const conditionSummary = getConditionSummaryText({
+      conditionType: formConditionType, ratePerUnit: formRatePerUnit, bundleSize: formBundleSize,
+      bundleReward: formBundleReward, minRevenueRequired: formMinRevenue, minQtyRequired: formMinQty,
+      productName: formProductName, sizes: formSizes, baseMode: formBaseMode, bases: formBases,
+    });
+    const generatedName = `${formProductName || 'สินค้าทั้งหมด'} — ${getConditionLabel(formConditionType)}`;
     const newRule: GallonIncentiveRule = {
       id: editingRuleId || `custom-rule-${Date.now()}`,
-      name: formName.trim() || `${formProductName || 'สินค้า'} (${getConditionLabel(formConditionType)})`,
+      name: generatedName,
       productName: formProductName.trim(),
       targetType: formProductName ? 'specific_product' : 'all',
-      size: formSize,
+      size: formSizes.length === 1 ? formSizes[0] : 'ALL',
+      sizes: formSizes,
+      baseMode: formBaseMode,
+      bases: formBaseMode === 'all' ? [] : formBases,
       conditionType: formConditionType,
-      ratePerUnit: Number(formRatePerUnit) || 0,
-      rate: Number(formRatePerUnit) || 0,
-      bundleSize: Number(formBundleSize) || 4,
-      bundleReward: Number(formBundleReward) || 200,
-      minRevenueRequired: Number(formMinRevenue) || 0,
-      minQtyRequired: Number(formMinQty) || 0,
-      enabled: true,
-      label: formName.trim(),
-      desc: getConditionSummaryText({
-        conditionType: formConditionType,
-        ratePerUnit: formRatePerUnit,
-        bundleSize: formBundleSize,
-        bundleReward: formBundleReward,
-        minRevenueRequired: formMinRevenue,
-        minQtyRequired: formMinQty,
-      }),
+      ratePerUnit: Number(formRatePerUnit) || 0, rate: Number(formRatePerUnit) || 0,
+      bundleSize: Number(formBundleSize) || 4, bundleReward: Number(formBundleReward) || 200,
+      minRevenueRequired: Number(formMinRevenue) || 0, minQtyRequired: Number(formMinQty) || 0,
+      enabled: true, label: generatedName, desc: conditionSummary,
     };
-
-    if (editingRuleId) {
-      setRules((prev) => prev.map((r) => (r.id === editingRuleId ? newRule : r)));
-    } else {
-      setRules((prev) => [newRule, ...prev]);
-    }
-
-    setIsFormOpen(false);
-    setEditingRuleId(null);
+    if (editingRuleId) setRules((prev) => prev.map((r) => (r.id === editingRuleId ? newRule : r)));
+    else setRules((prev) => [newRule, ...prev]);
+    setIsFormOpen(false); setEditingRuleId(null);
   };
 
   // Toggle Rule Enable/Disable
@@ -224,17 +250,13 @@ export const GallonRuleModal: React.FC<GallonRuleModalProps> = ({ isOpen, onClos
 
   // Live simulation for the active form
   const formPreviewRule: GallonIncentiveRule = {
-    name: formName,
-    productName: formProductName,
-    targetType: formProductName ? 'specific_product' : 'all',
-    size: formSize,
-    conditionType: formConditionType,
-    ratePerUnit: formRatePerUnit,
-    bundleSize: formBundleSize,
-    bundleReward: formBundleReward,
-    minRevenueRequired: formMinRevenue,
-    minQtyRequired: formMinQty,
-    enabled: true,
+    name: `${formProductName || 'สินค้าทั้งหมด'} — ${getConditionLabel(formConditionType)}`,
+    productName: formProductName, targetType: formProductName ? 'specific_product' : 'all',
+    size: formSizes.length === 1 ? formSizes[0] : 'ALL', sizes: formSizes,
+    baseMode: formBaseMode, bases: formBases,
+    conditionType: formConditionType, ratePerUnit: formRatePerUnit,
+    bundleSize: formBundleSize, bundleReward: formBundleReward,
+    minRevenueRequired: formMinRevenue, minQtyRequired: formMinQty, enabled: true,
   };
   const formPreviewEval = evaluateGallonRule(formPreviewRule, monthSales);
 
@@ -417,62 +439,58 @@ export const GallonRuleModal: React.FC<GallonRuleModalProps> = ({ isOpen, onClos
                 </div>
               </div>
 
-              {/* Form Input Controls */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Rule Name */}
-                <div className="sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    ชื่อเกณฑ์ / โปรโมชั่น
-                  </label>
-                  <input
-                    type="text"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder="เช่น สินค้า A ได้ค่าถัง 50 บ."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-850 text-xs text-slate-900 dark:text-white"
-                  />
+              {/* Product Conditions */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">สินค้าเป้าหมาย</label>
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text" value={formProductSearch}
+                      onChange={(e) => { setFormProductSearch(e.target.value); if (e.target.value !== formProductName) setFormProductName(''); }}
+                      placeholder="พิมพ์ชื่อสินค้า เช่น WEATHERBOND, VINILEX..."
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-850 text-xs text-slate-900 dark:text-white"
+                    />
+                    {productSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+                        {productSuggestions.map((name) => (
+                          <button key={name} type="button" onClick={() => handleSelectProduct(name)} className="w-full text-left px-3 py-2 text-xs font-medium hover:bg-amber-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer">{name}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {!formProductName && <p className="text-[10px] text-slate-400 mt-1">เว้นว่างเพื่อใช้กับสินค้าทั้งหมด</p>}
                 </div>
 
-                {/* Target Product */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    สินค้าเป้าหมาย
-                  </label>
-                  <select
-                    value={formProductName}
-                    onChange={(e) => {
-                      setFormProductName(e.target.value);
-                      if (!formName || formName.includes('ค่ารายถัง') || formName.includes('ขายครบ')) {
-                        setFormName(`${e.target.value || 'สินค้าทั้งหมด'} (${getConditionLabel(formConditionType)})`);
-                      }
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-850 text-xs text-slate-900 dark:text-white"
-                  >
-                    <option value="">-- ใช้กับสินค้าทั้งหมด (All Products) --</option>
-                    {productOptions.map((p, idx) => (
-                      <option key={idx} value={p}>
-                        {p}
-                      </option>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">ขนาดบรรจุ</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setFormSizes([])} className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer ${formSizes.length === 0 ? 'bg-amber-100 border-amber-400 text-amber-800' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300'}`}>ทุกขนาด</button>
+                    {availableSizes.map((size) => (
+                      <button key={size} type="button" onClick={() => toggleFormSize(size)} className={`px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold border cursor-pointer ${formSizes.includes(size) ? 'bg-amber-100 border-amber-400 text-amber-800' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300'}`}>{size}</button>
                     ))}
-                  </select>
+                  </div>
+                  {availableSizes.length === 0 && <p className="text-[10px] text-slate-400 mt-1">ยังไม่มีข้อมูลขนาดของสินค้านี้</p>}
                 </div>
 
-                {/* Target Size */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    ขนาดบรรจุ
-                  </label>
-                  <select
-                    value={formSize}
-                    onChange={(e) => setFormSize(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-850 text-xs text-slate-900 dark:text-white font-mono"
-                  >
-                    <option value="ALL">ทุกขนาด (All Sizes)</option>
-                    <option value="5GL">5GL (ถังใหญ่)</option>
-                    <option value="2.5GL">2.5GL (ถังกลาง)</option>
-                    <option value="1GL">1GL (แกลลอน)</option>
-                    <option value="1/4GL">1/4GL (กระป๋อง)</option>
-                  </select>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Base</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {(['all', 'include', 'exclude'] as const).map((mode) => (
+                      <button key={mode} type="button" onClick={() => { setFormBaseMode(mode); if (mode === 'all') setFormBases([]); }} className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer ${formBaseMode === mode ? 'bg-amber-100 border-amber-400 text-amber-800' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300'}`}>
+                        {mode === 'all' ? 'ทุก Base' : mode === 'include' ? 'เลือกเฉพาะ' : 'ยกเว้น'}
+                      </button>
+                    ))}
+                  </div>
+                  {formBaseMode !== 'all' && (
+                    <div className="flex flex-wrap gap-2">
+                      {availableBases.map((base) => (
+                        <button key={base} type="button" onClick={() => toggleFormBase(base)} className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer ${formBases.includes(base) ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300'}`}>{base}</button>
+                      ))}
+                      {availableBases.length === 0 && <p className="text-[10px] text-slate-400">ไม่พบ Base ของเงื่อนไขนี้</p>}
+                    </div>
+                  )}
+                  {formBaseMode === 'exclude' && formBases.length > 0 && <p className="text-[10px] text-slate-500 mt-1">จะจ่ายให้ทุก Base ยกเว้น: {formBases.join(', ')}</p>}
                 </div>
               </div>
 
@@ -723,11 +741,11 @@ export const GallonRuleModal: React.FC<GallonRuleModalProps> = ({ isOpen, onClos
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
                               {getConditionBadgeText(rule)}
                             </span>
-                            {rule.size && rule.size !== 'ALL' && (
+                            {(rule.sizes?.length || (rule.size && rule.size !== 'ALL')) ? (
                               <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
-                                {rule.size}
+                                {(rule.sizes?.length ? rule.sizes : [rule.size]).filter(Boolean).join(', ')}
                               </span>
-                            )}
+                            ) : null}
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                             {rule.desc || getConditionSummaryText(rule)}
@@ -905,15 +923,20 @@ function getConditionLabel(type?: IncentiveConditionType): string {
 }
 
 function getConditionSummaryText(rule: Partial<GallonIncentiveRule>): string {
+  const product = rule.productName ? rule.productName : 'สินค้าทั้งหมด';
+  const sizes = rule.sizes?.length ? ` | ขนาด: ${rule.sizes.join(', ')}` : ' | ทุกขนาด';
+  const bases = rule.baseMode === 'exclude' && rule.bases?.length ? ` | ทุก Base ยกเว้น ${rule.bases.join(', ')}` :
+    rule.baseMode === 'include' && rule.bases?.length ? ` | Base: ${rule.bases.join(', ')}` : ' | ทุก Base';
+  const prefix = `${product}${sizes}${bases}`;
   switch (rule.conditionType) {
     case 'bundle':
-      return `ต้องขายครบทุกๆ ${rule.bundleSize || 4} ถัง ถึงจะจ่ายรางวัลชุดละ ${rule.bundleReward || 200} บาท`;
+      return `${prefix} — ต้องขายครบทุกๆ ${rule.bundleSize || 4} ถัง ถึงจะจ่ายรางวัลชุดละ ${rule.bundleReward || 200} บาท`;
     case 'revenue_threshold':
-      return `ต้องมียอดขายสินค้านี้รวมกันถึง ${fmt(rule.minRevenueRequired || 200000)} บาท จึงจะจ่ายรายถังตามจำนวนที่ขายได้จริง ถังละ ${rule.ratePerUnit || 50} บาท`;
+      return `${prefix} — ต้องมียอดขายถึง ${fmt(rule.minRevenueRequired || 200000)} บาท จึงจะจ่ายรายถัง ถังละ ${rule.ratePerUnit || 50} บาท`;
     case 'min_qty_per_unit':
-      return `ต้องขายสินค้านี้ได้อย่างน้อย ${rule.minQtyRequired || 4} ถังขึ้นไป จึงจะจ่ายรายถังตามจำนวนที่ขายได้จริง ถังละ ${rule.ratePerUnit || 50} บาท`;
+      return `${prefix} — ต้องขายอย่างน้อย ${rule.minQtyRequired || 4} ถัง จึงจะจ่ายรายถัง ถังละ ${rule.ratePerUnit || 50} บาท`;
     case 'per_unit':
     default:
-      return `จ่ายเงินรางวัลตามจำนวนถังที่ขายได้ทันที ถังละ ${rule.ratePerUnit || rule.rate || 50} บาท`;
+      return `${prefix} — จ่ายตามจำนวนถังที่ขายได้ทันที ถังละ ${rule.ratePerUnit || rule.rate || 50} บาท`;
   }
 }
