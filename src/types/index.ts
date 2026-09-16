@@ -208,7 +208,7 @@ export interface CommissionPerHeadTier {
   amt: number;
 }
 
-export interface BrandConfig {
+export interface CommissionConfig {
   brandName: string;
   shortName: string;
   monthlyTarget: number;
