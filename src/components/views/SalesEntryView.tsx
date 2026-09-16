@@ -276,7 +276,7 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
   }, [todaySales]);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-24 lg:pb-12">
+    <div className="space-y-6 max-w-7xl w-full mx-auto pb-24 lg:pb-12">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <div>

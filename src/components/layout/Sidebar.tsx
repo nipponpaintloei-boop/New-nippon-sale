@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Sparkles,
   FileSpreadsheet,
+  Palette,
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { PWAInstallButton } from '../common/PWAInstallButton';
@@ -44,6 +45,7 @@ interface SidebarProps {
   onOpenSheetsModal?: () => void;
   onOpenInstallModal?: () => void;
   onOpenGoogleAuth?: () => void;
+  onOpenBrandModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -58,6 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSheetsModal,
   onOpenInstallModal,
   onOpenGoogleAuth,
+  onOpenBrandModal,
 }) => {
   const navItems: { id: MainTabType; label: string; sub: string; icon: React.ElementType }[] = [
     { id: 'dash', label: 'ภาพรวมยอดขาย', sub: 'Dashboard', icon: LayoutDashboard },
@@ -70,7 +73,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'yearly', label: 'ภาพรวมรายปี', sub: 'Yearly Overview', icon: CalendarRange },
   ];
 
-  const { currentUser, googleProfile } = useAppState();
+  const { currentUser, googleProfile, settings } = useAppState();
+  const brandName = settings.brandConfig?.brandName || 'Sale Paint Pro';
 
   return (
     <aside className="hidden lg:flex flex-col w-72 bg-slate-900 text-slate-100 border-r border-slate-800/80 p-5 h-screen sticky top-0 overflow-y-auto select-none z-20 shadow-2xl">
@@ -283,6 +287,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <PWAInstallButton onOpenModal={onOpenInstallModal} variant="sidebar" />
         )}
 
+        {onOpenBrandModal && (
+          <button
+            onClick={onOpenBrandModal}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white transition-colors group cursor-pointer border border-blue-900/40 bg-blue-950/20"
+          >
+            <div className="p-1.5 rounded-lg bg-blue-900/60 text-blue-400 group-hover:bg-blue-800/60">
+              <Palette className="w-4 h-4" />
+            </div>
+            <div className="text-left flex-1">
+              <span className="font-semibold block text-blue-200">ปรับแต่งแบรนด์</span>
+              <span className="text-[10px] text-slate-400">เปลี่ยนชื่อ สี โลโก้ และสาขา</span>
+            </div>
+          </button>
+        )}
+
         {onOpenSheetsModal && (
           <button
             onClick={onOpenSheetsModal}
@@ -305,7 +324,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Footer Info */}
       <div className="mt-auto pt-4 px-3 border-t border-slate-800/80 text-[11px] text-slate-500">
         <div className="flex items-center justify-between">
-          <span className="font-semibold text-slate-400">Nippon Paint Pro</span>
+          <span className="font-semibold text-slate-400 truncate max-w-[170px]">{brandName}</span>
           <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-emerald-400">v2.5</span>
         </div>
         <p className="text-[10px] text-slate-600 mt-1">Local-First Engine & Cloud Sync</p>

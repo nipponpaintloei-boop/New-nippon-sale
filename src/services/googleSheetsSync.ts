@@ -589,12 +589,11 @@ export function initializeGoogleTokenAutoRefresh(): () => void {
     const config = getGoogleSheetsConfig();
     if (!config.clientId) return;
 
-    // Access tokens are intentionally short-lived and sessionStorage is cleared
-    // when the browser session ends. Try a silent GIS token request on startup
-    // (and whenever the app becomes active) so an existing Google authorization
-    // can restore the connection without forcing the user to log in again.
+    // Only attempt a silent refresh if the user previously obtained a token in this session.
+    // Calling GIS prompt: 'none' when no Google session / permission is active causes GIS to attempt
+    // opening an unprompted popup or iframe redirect which browsers block with:
+    // "Failed to open popup window... Maybe blocked by the browser?"
     if (!inMemoryAccessToken) {
-      void refreshGoogleTokenSilently();
       return;
     }
 
@@ -608,7 +607,6 @@ export function initializeGoogleTokenAutoRefresh(): () => void {
 
   window.addEventListener('focus', refreshIfNeeded);
   document.addEventListener('visibilitychange', refreshIfNeeded);
-  refreshIfNeeded();
 
   return () => {
     window.removeEventListener('focus', refreshIfNeeded);

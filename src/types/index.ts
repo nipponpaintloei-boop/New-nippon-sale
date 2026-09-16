@@ -115,6 +115,17 @@ export interface CommissionTierRule {
   enabled?: boolean;
 }
 
+export interface BrandConfig {
+  brandName: string; // e.g. "Sale Paint Pro", "TOA SALE", "NIPPON SALE"
+  subTitle?: string; // e.g. "ระบบบริหารงานขายสีและสต็อก"
+  branchName?: string; // e.g. "สาขาเลย (Loei Branch)"
+  logoType?: 'preset' | 'custom_text' | 'image_url';
+  logoImageUrl?: string;
+  themeColor?: 'red' | 'blue' | 'emerald' | 'violet' | 'amber' | 'teal' | 'slate';
+  accentColor?: string; // custom hex or tailwind class
+  badgeText?: string; // e.g. "PRO"
+}
+
 export interface AppSettings {
   targets: Record<string, number>;
   headcounts?: Record<string, number>;
@@ -126,6 +137,7 @@ export interface AppSettings {
   auditLog?: AuditItem[];
   gallonIncentives?: Record<string, GallonIncentiveRule[]>;
   orderByName?: string;
+  brandConfig?: BrandConfig;
 }
 
 

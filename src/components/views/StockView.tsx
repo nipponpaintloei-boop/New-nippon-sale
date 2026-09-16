@@ -18,6 +18,7 @@ import { Product } from '../../types';
 import { fmt } from '../../services/calculations';
 import { getLowStockProducts, getOversoldProducts } from '../../services/stockService';
 import { BulkStockInModal } from '../modals/BulkStockInModal';
+import { SingleRestockModal } from '../modals/SingleRestockModal';
 
 interface StockViewProps {
   onOpenAddProductModal: () => void;
@@ -30,10 +31,11 @@ export const StockView: React.FC<StockViewProps> = ({
   onEditProduct,
   onOpenImportModal,
 }) => {
-  const { products, sales, updateProduct, deleteProduct, recomputeAllStock } = useAppState();
+  const { products, sales, restockProduct, updateProduct, deleteProduct, recomputeAllStock } = useAppState();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterMode, setFilterMode] = useState<'all' | 'low' | 'oversold'>('all');
   const [isBulkStockInOpen, setIsBulkStockInOpen] = useState<boolean>(false);
+  const [restockTargetProduct, setRestockTargetProduct] = useState<Product | null>(null);
 
   // Compute 14-day sales for low stock estimation
   const sales14Days = useMemo(() => {
@@ -302,13 +304,15 @@ export const StockView: React.FC<StockViewProps> = ({
                       <td className="py-3.5 px-4 text-center">
                         <div className="inline-flex items-center gap-2">
                           <button
+                            type="button"
                             onClick={() => handleInlineStockChange(p, -1)}
-                            className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 font-bold flex items-center justify-center cursor-pointer"
+                            className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                            title="ลดสต็อก 1 ถัง"
                           >
                             -
                           </button>
                           <span
-                            className={`font-mono font-black text-sm px-2 py-0.5 rounded-lg ${
+                            className={`font-mono font-black text-sm px-2.5 py-0.5 rounded-lg min-w-[36px] inline-block text-center ${
                               isNeg
                                 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
                                 : isZero
@@ -319,8 +323,10 @@ export const StockView: React.FC<StockViewProps> = ({
                             {p.stock}
                           </span>
                           <button
+                            type="button"
                             onClick={() => handleInlineStockChange(p, 1)}
-                            className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 font-bold flex items-center justify-center cursor-pointer"
+                            className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                            title="เพิ่มสต็อก 1 ถัง"
                           >
                             +
                           </button>
@@ -329,6 +335,16 @@ export const StockView: React.FC<StockViewProps> = ({
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            type="button"
+                            onClick={() => setRestockTargetProduct(p)}
+                            className="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1 border border-blue-200 dark:border-blue-800/80 transition-colors cursor-pointer"
+                            title="เติมสต็อก / รับเข้าสินค้านี้"
+                          >
+                            <PackagePlus className="w-3.5 h-3.5" />
+                            <span>เติมสต็อก</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => onEditProduct(p)}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                             title="แก้ไขสินค้า"
@@ -336,6 +352,7 @@ export const StockView: React.FC<StockViewProps> = ({
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => deleteProduct(p.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
                             title="ลบสินค้า"
@@ -362,6 +379,12 @@ export const StockView: React.FC<StockViewProps> = ({
       <BulkStockInModal
         isOpen={isBulkStockInOpen}
         onClose={() => setIsBulkStockInOpen(false)}
+      />
+
+      <SingleRestockModal
+        product={restockTargetProduct}
+        isOpen={!!restockTargetProduct}
+        onClose={() => setRestockTargetProduct(null)}
       />
     </div>
   );

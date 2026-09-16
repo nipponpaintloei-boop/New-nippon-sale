@@ -810,10 +810,10 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 
   const restockProduct = useCallback(
-    async (sku: string, qty: number, note?: string, date?: string) => {
+    async (idOrSku: string, qty: number, note?: string, date?: string) => {
       let targetProd: Product | undefined;
       const updated = products.map((p) => {
-        if (p.sku === sku) {
+        if (p.sku === idOrSku || p.id === idOrSku) {
           targetProd = p;
           const newInflow = (p.inflow || 0) + qty;
           const newRemain = p.init + newInflow - p.sold;
@@ -832,7 +832,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await storageSet(STORE_KEYS.products, JSON.stringify(recomputed));
 
       const d = date || todayISO();
-      const pName = targetProd ? `${targetProd.name} ${targetProd.size} ${targetProd.base}`.trim() : sku;
+      const pName = targetProd ? `${targetProd.name} ${targetProd.size} ${targetProd.base}`.trim() : idOrSku;
       const detail = `เติมสต็อก ${pName} จำนวน +${qty} วันที่ ${d}${note ? ` [โน้ต: ${note}]` : ''}`;
       setSettings((prev) => {
         const updatedSettings = addAuditItem(prev, 'เติมสต็อก', detail);

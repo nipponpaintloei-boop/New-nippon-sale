@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Bell, User, LogOut, Calendar, ChevronDown, Sparkles, FileSpreadsheet } from 'lucide-react';
+import { Menu, Bell, User, LogOut, Calendar, ChevronDown, Sparkles, FileSpreadsheet, Palette } from 'lucide-react';
 import { useAppState } from '../../context/AppStateContext';
 import { THAI_MONTHS } from '../../data/constants';
 import { extractUsername, signOutUser } from '../../services/auth';
@@ -13,6 +13,7 @@ interface HeaderProps {
   onOpenSheetsModal?: () => void;
   onOpenInstallModal?: () => void;
   onOpenGoogleAuth?: () => void;
+  onOpenBrandModal?: () => void;
   actionCount?: number;
 }
 
@@ -22,10 +23,15 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSheetsModal,
   onOpenInstallModal,
   onOpenGoogleAuth,
+  onOpenBrandModal,
   actionCount = 0,
 }) => {
-  const { activeMonth, setActiveMonth, currentUser, setCurrentUser, googleProfile, setGoogleProfile } = useAppState();
+  const { activeMonth, setActiveMonth, currentUser, setCurrentUser, googleProfile, setGoogleProfile, settings } = useAppState();
   const currentYear = parseInt(activeMonth.split('-')[0], 10) || new Date().getFullYear();
+
+  const brandConfig = settings.brandConfig;
+  const branchName = brandConfig?.branchName || 'สาขาเลย (Loei Branch)';
+  const subTitle = brandConfig?.subTitle || 'ระบบบริการและบันทึกยอดขาย';
 
   const [sheetsStatus, setSheetsStatus] = useState<string>('disconnected');
 
@@ -63,7 +69,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Logo size="sm" variant="compact" />
           </div>
           <div className="hidden lg:block text-xs text-slate-500 dark:text-slate-400 font-medium">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">สาขาเลย (Loei Branch)</span> · ระบบบริการและบันทึกยอดขาย
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{branchName}</span> · {subTitle}
           </div>
         </div>
 
@@ -95,6 +101,18 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2">
           {onOpenInstallModal && (
             <PWAInstallButton onOpenModal={onOpenInstallModal} variant="header" />
+          )}
+
+          {onOpenBrandModal && (
+            <button
+              type="button"
+              onClick={onOpenBrandModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              title="ตั้งค่าแบรนด์และโปรไฟล์ (สี, โลโก้, ชื่อแบรนด์)"
+            >
+              <Palette className="w-4 h-4 text-blue-500" />
+              <span className="hidden md:inline">ปรับแต่งแบรนด์</span>
+            </button>
           )}
 
           {onOpenSheetsModal && (
