@@ -13,6 +13,7 @@ export function parseSeriesColorNo(name: string): { series: string; colorNo: str
 
 export interface ProductIndexMap {
   productIndex: Record<string, Record<string, Record<string, Record<string, Product>>>>;
+  filmColorIndex: Record<string, Record<string, Record<string, Record<string, Record<string, Product>>>>>;
   seriesIndex: Record<string, Record<string, string>>;
   nameToSeries: Record<string, string>;
   productNames: string[];
@@ -21,6 +22,7 @@ export interface ProductIndexMap {
 
 export function buildProductIndexes(products: Product[]): ProductIndexMap {
   const productIndex: Record<string, Record<string, Record<string, Record<string, Product>>>> = {};
+  const filmColorIndex: Record<string, Record<string, Record<string, Record<string, Record<string, Product>>>>> = {};
   products.forEach((r) => {
     if (!r.name) return;
     if (!productIndex[r.name]) productIndex[r.name] = {};
@@ -30,6 +32,18 @@ export function buildProductIndexes(products: Product[]): ProductIndexMap {
     if (!productIndex[r.name][sizeKey][baseKey]) productIndex[r.name][sizeKey][baseKey] = {};
     const colorKey = (r.colorCode || '').trim() || '__NO_COLOR__';
     productIndex[r.name][sizeKey][baseKey][colorKey] = r;
+
+    // Keep film finish as a separate selection dimension. This is important
+    // for products such as Weatherbond that share the same product/size/base
+    // but have different finishes (e.g. semi-gloss vs smooth/matt).
+    const filmKey = (r.filmColor || '').trim() || '__NO_FILM_COLOR__';
+    if (!filmColorIndex[r.name]) filmColorIndex[r.name] = {};
+    if (!filmColorIndex[r.name][sizeKey]) filmColorIndex[r.name][sizeKey] = {};
+    if (!filmColorIndex[r.name][sizeKey][baseKey]) filmColorIndex[r.name][sizeKey][baseKey] = {};
+    if (!filmColorIndex[r.name][sizeKey][baseKey][filmKey]) {
+      filmColorIndex[r.name][sizeKey][baseKey][filmKey] = {};
+    }
+    filmColorIndex[r.name][sizeKey][baseKey][filmKey][colorKey] = r;
   });
 
   const seriesIndex: Record<string, Record<string, string>> = {};
@@ -57,6 +71,7 @@ export function buildProductIndexes(products: Product[]): ProductIndexMap {
 
   return {
     productIndex,
+    filmColorIndex,
     seriesIndex,
     nameToSeries,
     productNames: Object.keys(productIndex).sort(),
