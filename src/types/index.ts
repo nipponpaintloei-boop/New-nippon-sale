@@ -24,6 +24,7 @@ export interface SaleEntry {
   name: string;
   size: string;
   base: string;
+  filmColor?: string;
   price: number;
   colorCode: string;
   tintPrice: number;
@@ -42,6 +43,7 @@ export interface SalesRowSupabase {
   name: string;
   size: string;
   base: string;
+  film_color?: string;
   price: number;
   color_code: string;
   tint_price: number;
@@ -64,11 +66,8 @@ export type IncentiveConditionType =
 export interface GallonIncentiveRule {
   id?: string;
   name: string;
-  size: string; // Legacy single-size field: 'ALL' or one size
-  sizes?: string[]; // New multi-size filter. Empty/undefined means all sizes.
-  base?: string | string[]; // Legacy base filter
-  baseMode?: 'all' | 'include' | 'exclude'; // New base filter mode
-  bases?: string[]; // New base values used with include/exclude
+  size: string; // 'ALL' or '5GL', '2.5GL', '1GL', '1/4GL'
+  base?: string | string[]; // '__ALL__' or specific base(s)
   mode?: 'perUnit' | 'perBundle';
   bundleSize?: number;
   bundleReward?: number;
