@@ -30,6 +30,7 @@ import { ProductModal } from './components/modals/ProductModal';
 import { GoogleSheetsModal } from './components/modals/GoogleSheetsModal';
 import { GoogleAuthModal } from './components/modals/GoogleAuthModal';
 import { InstallAppModal } from './components/modals/InstallAppModal';
+import { BrandSettingsModal } from './components/modals/BrandSettingsModal';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { SyncToastContainer } from './components/common/SyncToastContainer';
 import { SaleEntry, Product } from './types';
@@ -52,6 +53,7 @@ function MainApp() {
   const [sheetsModalOpen, setSheetsModalOpen] = useState<boolean>(false);
   const [googleAuthModalOpen, setGoogleAuthModalOpen] = useState<boolean>(false);
   const [installModalOpen, setInstallModalOpen] = useState<boolean>(false);
+  const [brandModalOpen, setBrandModalOpen] = useState<boolean>(false);
 
   // Selected item modals
   const [selectedSale, setSelectedSale] = useState<SaleEntry | null>(null);
@@ -93,6 +95,7 @@ function MainApp() {
           onOpenSheetsModal={() => setSheetsModalOpen(true)}
           onOpenInstallModal={() => setInstallModalOpen(true)}
           onOpenGoogleAuth={() => setGoogleAuthModalOpen(true)}
+          onOpenBrandModal={() => setBrandModalOpen(true)}
         />
 
         {/* Center Main Stage */}
@@ -104,6 +107,7 @@ function MainApp() {
             onOpenSheetsModal={() => setSheetsModalOpen(true)}
             onOpenInstallModal={() => setInstallModalOpen(true)}
             onOpenGoogleAuth={() => setGoogleAuthModalOpen(true)}
+            onOpenBrandModal={() => setBrandModalOpen(true)}
           />
 
           {/* View Content Stage */}
@@ -205,6 +209,7 @@ function MainApp() {
         onOpenSheetsSetup={() => setSheetsModalOpen(true)}
       />
       <InstallAppModal isOpen={installModalOpen} onClose={() => setInstallModalOpen(false)} />
+      <BrandSettingsModal isOpen={brandModalOpen} onClose={() => setBrandModalOpen(false)} />
       <AuditModal isOpen={auditModalOpen} onClose={() => setAuditModalOpen(false)} />
       <ResetModal isOpen={resetModalOpen} onClose={() => setResetModalOpen(false)} />
 
