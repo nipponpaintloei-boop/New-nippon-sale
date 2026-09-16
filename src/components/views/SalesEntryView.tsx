@@ -33,6 +33,7 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedBase, setSelectedBase] = useState<string>('');
+  const [selectedFilmColor, setSelectedFilmColor] = useState<string>('');
   const [colorCode, setColorCode] = useState<string>('');
   const [tintPrice, setTintPrice] = useState<string>('');
   const [qty, setQty] = useState<string>('1');
@@ -66,10 +67,24 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
     return Object.keys(indexes.productIndex[selectedProduct][selectedSize]);
   }, [selectedProduct, selectedSize, indexes]);
 
-  // Color numbers / color labels available for the selected product variant
+  // Film finishes available for the selected product variant
+  const availableFilmColors = useMemo(() => {
+    if (!selectedProduct || !selectedSize || !selectedBase) return [];
+    const filmMap = indexes.filmColorIndex[selectedProduct]?.[selectedSize]?.[selectedBase];
+    if (!filmMap) return [];
+    return Object.keys(filmMap)
+      .filter((key) => key !== '__NO_FILM_COLOR__')
+      .sort((a, b) => a.localeCompare(b, 'th'))
+      .map((key) => ({ key, value: key }));
+  }, [selectedProduct, selectedSize, selectedBase, indexes]);
+
+  // Color numbers available for the selected product + film finish
   const availableColorCodes = useMemo(() => {
     if (!selectedProduct || !selectedSize || !selectedBase) return [];
-    const colorMap = indexes.productIndex[selectedProduct]?.[selectedSize]?.[selectedBase];
+    const filmMap = indexes.filmColorIndex[selectedProduct]?.[selectedSize]?.[selectedBase];
+    if (!filmMap) return [];
+    const filmKey = selectedFilmColor.trim() || '__NO_FILM_COLOR__';
+    const colorMap = filmMap[filmKey];
     if (!colorMap) return [];
     return Object.keys(colorMap)
       .map((key) => {
@@ -78,16 +93,19 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
       })
       .filter((x) => x.value)
       .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
-  }, [selectedProduct, selectedSize, selectedBase, indexes]);
+  }, [selectedProduct, selectedSize, selectedBase, selectedFilmColor, indexes]);
 
   // Current matched product row
   const matchedRow: Product | null = useMemo(() => {
     if (!selectedProduct || !selectedSize || !selectedBase) return null;
-    const colorMap = indexes.productIndex[selectedProduct]?.[selectedSize]?.[selectedBase];
+    const filmMap = indexes.filmColorIndex[selectedProduct]?.[selectedSize]?.[selectedBase];
+    if (!filmMap) return null;
+    const filmKey = selectedFilmColor.trim() || '__NO_FILM_COLOR__';
+    const colorMap = filmMap[filmKey];
     if (!colorMap) return null;
     const colorKey = colorCode.trim() || '__NO_COLOR__';
     return colorMap[colorKey] || (availableColorCodes.length === 1 ? colorMap[availableColorCodes[0].key] : null) || null;
-  }, [selectedProduct, selectedSize, selectedBase, colorCode, availableColorCodes, indexes]);
+  }, [selectedProduct, selectedSize, selectedBase, selectedFilmColor, colorCode, availableColorCodes, indexes]);
 
   const unitPrice = matchedRow ? matchedRow.price : 0;
 
@@ -96,6 +114,17 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
     const t = Number(tintPrice) || 0;
     return (unitPrice + t) * q;
   }, [unitPrice, tintPrice, qty]);
+
+  const selectFirstFilmAndColor = (name: string, size: string, base: string) => {
+    const filmMap = indexes.filmColorIndex[name]?.[size]?.[base] || {};
+    const filmKeys = Object.keys(filmMap).filter((k) => k !== '__NO_FILM_COLOR__');
+    const nextFilm = filmKeys.length === 1 ? filmKeys[0] : (filmKeys[0] || '');
+    setSelectedFilmColor(nextFilm);
+
+    const colorMap = filmMap[nextFilm || '__NO_FILM_COLOR__'] || {};
+    const firstColor = Object.keys(colorMap).find((k) => k !== '__NO_COLOR__');
+    setColorCode(firstColor ? (colorMap[firstColor]?.colorCode || '') : '');
+  };
 
   const handleSelectProduct = (name: string) => {
     setSelectedProduct(name);
@@ -107,13 +136,11 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
       const bases = Object.keys(indexes.productIndex[name][defaultSize] || {});
       const defaultBase = bases.length > 0 ? bases[0] : 'มาตรฐาน';
       setSelectedBase(defaultBase);
-      const colorMap = indexes.productIndex[name][defaultSize]?.[defaultBase] || {};
-      const colorKeys = Object.keys(colorMap);
-      const firstColor = colorKeys.find((k) => k !== '__NO_COLOR__');
-      setColorCode(firstColor ? (colorMap[firstColor]?.colorCode || '') : '');
+      selectFirstFilmAndColor(name, defaultSize, defaultBase);
     } else {
       setSelectedSize('มาตรฐาน');
       setSelectedBase('มาตรฐาน');
+      setSelectedFilmColor('');
       setColorCode('');
     }
   };
@@ -124,19 +151,23 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
       const bases = Object.keys(indexes.productIndex[selectedProduct][size]);
       const nextBase = bases.includes(selectedBase) ? selectedBase : (bases[0] || 'มาตรฐาน');
       setSelectedBase(nextBase);
-      const colorMap = indexes.productIndex[selectedProduct][size][nextBase] || {};
-      const firstColor = Object.keys(colorMap).find((k) => k !== '__NO_COLOR__');
-      setColorCode(firstColor ? (colorMap[firstColor]?.colorCode || '') : '');
+      selectFirstFilmAndColor(selectedProduct, size, nextBase);
     }
   };
 
   const handleSelectBase = (base: string) => {
     setSelectedBase(base);
     if (selectedProduct && selectedSize) {
-      const colorMap = indexes.productIndex[selectedProduct]?.[selectedSize]?.[base] || {};
-      const firstColor = Object.keys(colorMap).find((k) => k !== '__NO_COLOR__');
-      setColorCode(firstColor ? (colorMap[firstColor]?.colorCode || '') : '');
+      selectFirstFilmAndColor(selectedProduct, selectedSize, base);
     }
+  };
+
+  const handleSelectFilmColor = (film: string) => {
+    setSelectedFilmColor(film);
+    const filmMap = indexes.filmColorIndex[selectedProduct]?.[selectedSize]?.[selectedBase] || {};
+    const colorMap = filmMap[film || '__NO_FILM_COLOR__'] || {};
+    const firstColor = Object.keys(colorMap).find((k) => k !== '__NO_COLOR__');
+    setColorCode(firstColor ? (colorMap[firstColor]?.colorCode || '') : '');
   };
 
   const handleSelectColorCode = (code: string) => {
@@ -183,6 +214,7 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
     setSelectedProduct('');
     setSelectedSize('');
     setSelectedBase('');
+    setSelectedFilmColor('');
     setColorCode('');
     setTintPrice('');
     setQty('1');
@@ -401,8 +433,8 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
 
             {/* Quick Select Base (เบสสี A, B, C, D) & Color Code */}
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
-              {/* Base Buttons (8 cols) */}
-              <div className="sm:col-span-8 space-y-1.5">
+              {/* Base Buttons */}
+              <div className="sm:col-span-4 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                     เบสสี (Base) {selectedBase && <span className="text-red-600">({selectedBase})</span>}
@@ -439,6 +471,46 @@ export const SalesEntryView: React.FC<SalesEntryViewProps> = ({
                 ) : (
                   <div className="p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 text-center">
                     {selectedProduct ? 'ไม่มีเบสให้เลือก (สินค้ามาตรฐาน)' : 'เลือกสินค้าเพื่อดูเบส'}
+                  </div>
+                )}
+              </div>
+
+              {/* Film Finish */}
+              <div className="sm:col-span-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    ฟิล์มสี {selectedFilmColor && <span className="text-red-600">({selectedFilmColor})</span>}
+                  </label>
+                  {availableFilmColors.length > 0 && (
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      เลือกฟิล์มสี
+                    </span>
+                  )}
+                </div>
+                {availableFilmColors.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {availableFilmColors.map(({ key, value }) => {
+                      const isSelected = selectedFilmColor === value;
+                      return (
+                        <button
+                          key={`film-${key}`}
+                          type="button"
+                          onClick={() => handleSelectFilmColor(value)}
+                          className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-red-600 text-white border-red-600 ring-2 ring-red-500/20'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-red-300'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 inline mr-1" />}
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-[10px] text-slate-400">
+                    {selectedProduct ? 'สินค้านี้ไม่มีฟิล์มสีให้เลือก' : 'เลือกสินค้าเพื่อดูฟิล์มสี'}
                   </div>
                 )}
               </div>
